@@ -70,7 +70,7 @@ Touch is represented as 34 sensor bits: A1–A8, B1–B8, C1/C2, D1–D8 and E1�
 
 ## 2. Verify before installing hooks
 
-[Target metadata](../target-build.json) records the known APK/library/metadata hashes and function addresses. The optional Python verifier checks the full local APK. At runtime, the native bridge verifies the ELF build ID and per-function compatibility fingerprints before installing the relevant hook group.
+[1.60 target metadata](../target-build.json) and [1.65 target metadata](../targets/kanade-260721.1649.json) record each known APK/library/metadata hash and function address. The optional Python verifier selects the profile by ELF build ID and checks the full local APK. At runtime, the native bridge selects one complete profile, then verifies per-function compatibility fingerprints before installing the relevant hook group. Unknown build IDs never fall back to either version.
 
 Version 1.0.0 stores **digests**, not the original 16 instruction bytes. [target_fingerprint.h](../app/src/main/cpp/target_fingerprint.h) computes an FNV-1a value over those bytes:
 

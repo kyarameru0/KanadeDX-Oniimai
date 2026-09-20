@@ -166,14 +166,14 @@ static void notesHook(void* self,const void* method){
 }
 static void install(uintptr_t base,void* library){
     if(status.load()!=0)return;
-    const uintptr_t offsets[]={RVA_GAME_START,RVA_GAME_RELEASE,RVA_RESULT_START,RVA_RESULT_RELEASE,RVA_SCORE_UPDATE,RVA_SCORE_UTAGE,RVA_SCORE_FINISH,RVA_MUSIC_GET,RVA_NOTES_UPDATE,RVA_CURRENT_MSEC};
-    const uint64_t signatures[]={SIG_GAME_START,SIG_GAME_RELEASE,SIG_RESULT_START,SIG_RESULT_RELEASE,SIG_SCORE_UPDATE,SIG_SCORE_UTAGE,SIG_SCORE_FINISH,SIG_MUSIC_GET,SIG_NOTES_UPDATE,SIG_CURRENT_MSEC};
+    const uintptr_t offsets[]={targetBuild->RVA_GAME_START,targetBuild->RVA_GAME_RELEASE,targetBuild->RVA_RESULT_START,targetBuild->RVA_RESULT_RELEASE,targetBuild->RVA_SCORE_UPDATE,targetBuild->RVA_SCORE_UTAGE,targetBuild->RVA_SCORE_FINISH,targetBuild->RVA_MUSIC_GET,targetBuild->RVA_NOTES_UPDATE,targetBuild->RVA_CURRENT_MSEC};
+    const uint64_t signatures[]={targetBuild->SIG_GAME_START,targetBuild->SIG_GAME_RELEASE,targetBuild->SIG_RESULT_START,targetBuild->SIG_RESULT_RELEASE,targetBuild->SIG_SCORE_UPDATE,targetBuild->SIG_SCORE_UTAGE,targetBuild->SIG_SCORE_FINISH,targetBuild->SIG_MUSIC_GET,targetBuild->SIG_NOTES_UPDATE,targetBuild->SIG_CURRENT_MSEC};
     for(int i=0;i<10;i++)if(!matchesTarget(reinterpret_cast<void*>(base+offsets[i]),signatures[i])){status=-4;return;}
-    currentMsec=reinterpret_cast<float(*)(const void*)>(base+RVA_CURRENT_MSEC);
+    currentMsec=reinterpret_cast<float(*)(const void*)>(base+targetBuild->RVA_CURRENT_MSEC);
     void* hooks[]={reinterpret_cast<void*>(gameStartHook),reinterpret_cast<void*>(gameReleaseHook),reinterpret_cast<void*>(resultStartHook),reinterpret_cast<void*>(resultReleaseHook),reinterpret_cast<void*>(scoreHook),reinterpret_cast<void*>(utageHook),reinterpret_cast<void*>(finishHook),reinterpret_cast<void*>(musicHook),reinterpret_cast<void*>(notesHook)};
     void** originals[]={reinterpret_cast<void**>(&gameStartOriginal),reinterpret_cast<void**>(&gameReleaseOriginal),reinterpret_cast<void**>(&resultStartOriginal),reinterpret_cast<void**>(&resultReleaseOriginal),reinterpret_cast<void**>(&scoreOriginal),reinterpret_cast<void**>(&utageOriginal),reinterpret_cast<void**>(&finishOriginal),reinterpret_cast<void**>(&musicOriginal),reinterpret_cast<void**>(&notesOriginal)};
     int count=0;for(;count<9;count++)if(hookFunction(reinterpret_cast<void*>(base+offsets[count]),hooks[count],originals[count])!=0)break;
-    if(count==9){GameAlbum::install(base,library);status=511;__android_log_print(ANDROID_LOG_INFO,"OniimaiKanade","Verified 1.60 gameplay statistics hooks installed");}
+    if(count==9){GameAlbum::install(base,library);status=511;__android_log_print(ANDROID_LOG_INFO,"OniimaiKanade","Verified gameplay statistics hooks installed: %s",targetBuild->name);}
     else{for(int i=count-1;i>=0;i--)unhookFunction(reinterpret_cast<void*>(base+offsets[i]));status=-5;}
 }
 static std::string json(){

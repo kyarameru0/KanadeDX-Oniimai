@@ -159,7 +159,7 @@ final class UiTextCatalog {
         text.put("LED 재연결 대기: ","等待 LED 重新连接：");
         text.put("동일한 USB 장치가 여러 개입니다. 포트를 다시 선택하세요.","存在多个相同的 USB 设备。请重新选择端口。");
         text.put("저장된 USB 포트 연결 대기: ","等待连接已保存的 USB 端口：");
-        text.put("지원하지 않는 KanadeDX 빌드 — 260207.0635 필요","不支持此 KanadeDX 版本 — 需要 260207.0635");
+        text.put("지원하지 않는 KanadeDX 빌드 — 260207.0635 또는 260721.1649 필요","不支持此 KanadeDX 版本 — 需要 260207.0635 或 260721.1649");
         text.put("초 · ","秒 · ");
         CHINESE=java.util.Collections.unmodifiableMap(text);
     }

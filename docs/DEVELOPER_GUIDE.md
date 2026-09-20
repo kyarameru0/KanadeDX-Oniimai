@@ -27,7 +27,7 @@ You do not need a game APK or controller to understand the code or run host test
 | `app/src/main/cpp/` | JNI implementation, native state and version-specific game adapters. |
 | `tests/` | Runnable host checks; `fakes/` supplies only the Android behavior those checks need. |
 | `scripts/` | Build, test, locale, target and release-audit commands. |
-| `target-build.json` | Identity and checked locations for the supported game build. |
+| `target-build.json`, `targets/` | Identity and checked locations for each supported game build. |
 | `docs/` | User guide, this walkthrough and protocol references. |
 
 The [documentation map](README.md) provides a shorter reading route for each task. Examples are source exercises and do not enable extra features in the released APK.
@@ -36,7 +36,7 @@ The [documentation map](README.md) provides a shorter reading route for each tas
 
 The output is an **LSPosed module APK**, not a game. The game must already be installed. LSPosed loads the module into the selected game process, where it adds controller input and an Android settings/dashboard layer.
 
-The module cannot act as a standalone replacement for KanadeDX. Only **KanadeDX-260207.0635 (1.60)** has been tested. Matching an Android package name alone does not make a different game build compatible.
+The module cannot act as a standalone replacement for KanadeDX. Current source has exact profiles for **260207.0635 (1.60)** and **260721.1649 (1.65)**. Matching an Android package name alone does not make a different game build compatible. See [verification scope](COMPATIBILITY-1.65.md).
 
 Three places run different responsibilities:
 
@@ -84,7 +84,7 @@ Native-library availability and Activity creation can occur in different orders.
 
 `KanadeModule` ignores unrelated processes and system-server loading. It preserves the original Activity calls and creates/destroys the session with the game Activity. On Xiaomi Android 16 or later, `UnityStartup` supplies the existing OpenGL ES startup workaround before Unity constructs its graphics device.
 
-The native code verifies the game's ELF build ID, then verifies each relevant function before installing its hook group. In [bridge.cpp](../app/src/main/cpp/bridge.cpp), status `15` means the four core input hooks are installed. It is **not** proof that every optional statistics, LED or card hook succeeded.
+The native code selects a complete `TargetBuild` by the game's ELF build ID, then verifies each relevant function before installing its hook group. [target_build.h](../app/src/main/cpp/target_build.h) owns selection; `target_160.h` and `target_165.h` keep separate addresses, fingerprints and UI/boot offsets. The selected profile is fixed before hooks are published. An unknown build gets no fallback profile. In [bridge.cpp](../app/src/main/cpp/bridge.cpp), status `15` means the four core input hooks are installed. It is **not** proof that every optional statistics, LED or card hook succeeded.
 
 | Core status | First thing to investigate |
 | --- | --- |
@@ -258,7 +258,7 @@ When adding a dependency, update notices and the inventory first, then the viewe
 | Statistics vanish in Result | `GameplayStats`, `StatsLifecycle` | Game → loading → Result → exit, plus abort/retry |
 | External output stutters or has wrong rotation | `DisplayOutput`, `DisplayGeometry` | Actual active display mode, direct/fallback route and frame timings |
 | UI spacing or text clipping | `OniTheme`, `NativeDashboard`, widget bounds | Small screen, 2×2 tiles, font scale and both languages |
-| New game version | `target-build.json`, `target_build.h`, affected native adapters | Authorized target verification and feature-by-feature device checks |
+| New game version | Target JSON manifests, `target_build.h`, per-build headers, affected native adapters | Verify exact method signatures, field layouts and interior guards, then both old/new APKs and feature-by-feature device checks |
 
 ## Match the change to an existing test
 

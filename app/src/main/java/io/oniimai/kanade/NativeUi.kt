@@ -67,7 +67,7 @@ internal object NativeUi {
                         Spacer(Modifier.height(OniTokens.gap))
                         Caption(tr("게임 안 Onii 설정에서 USB 연결, 외부 화면과 LED를 조절합니다. 미리보기에서는 USB에 연결하지 않습니다.", "在游戏内 Onii 设置中调整 USB 连接、外接屏幕和 LED。预览不会连接 USB。"))
                     } }
-                    item { Caption("Oniimai ${BuildConfig.VERSION_NAME} · LSPosed API 102\nKanadeDX 1.60 · Android 9+", Modifier.padding(OniTokens.inset)) }
+                    item { Caption("Oniimai ${BuildConfig.VERSION_NAME} · LSPosed API 102\nKanadeDX 1.60 / 1.65 · Android 9+", Modifier.padding(OniTokens.inset)) }
                 }
             }
         }

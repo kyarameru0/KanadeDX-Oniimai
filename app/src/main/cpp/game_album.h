@@ -110,9 +110,9 @@ static bool initialize(){
     uintptr_t instanceCode=0,jacketCode=0,selectedCode=0;
     if(assetInstance)memcpy(&instanceCode,assetInstance,sizeof(instanceCode));if(jacket)memcpy(&jacketCode,jacket,sizeof(jacketCode));
     if(selectedMusic)memcpy(&selectedCode,selectedMusic,sizeof(selectedCode));
-    if(instanceCode!=imageBase+RVA_ALBUM_INSTANCE||jacketCode!=imageBase+RVA_ALBUM_JACKET||selectedCode!=imageBase+RVA_ALBUM_SELECTED){
+    if(instanceCode!=imageBase+targetBuild->RVA_ALBUM_INSTANCE||jacketCode!=imageBase+targetBuild->RVA_ALBUM_JACKET||selectedCode!=imageBase+targetBuild->RVA_ALBUM_SELECTED){
         initialized=true; // A present but different game method is not a readiness delay.
-        __android_log_print(ANDROID_LOG_WARN,"OniimaiKanade","Album metadata code mismatch: base=%p Instance=%p expected=%p Jacket=%p expected=%p Selected=%p expected=%p",reinterpret_cast<void*>(imageBase),reinterpret_cast<void*>(instanceCode),reinterpret_cast<void*>(imageBase+RVA_ALBUM_INSTANCE),reinterpret_cast<void*>(jacketCode),reinterpret_cast<void*>(imageBase+RVA_ALBUM_JACKET),reinterpret_cast<void*>(selectedCode),reinterpret_cast<void*>(imageBase+RVA_ALBUM_SELECTED));return false;}
+        __android_log_print(ANDROID_LOG_WARN,"OniimaiKanade","Album metadata code mismatch: base=%p Instance=%p expected=%p Jacket=%p expected=%p Selected=%p expected=%p",reinterpret_cast<void*>(imageBase),reinterpret_cast<void*>(instanceCode),reinterpret_cast<void*>(imageBase+targetBuild->RVA_ALBUM_INSTANCE),reinterpret_cast<void*>(jacketCode),reinterpret_cast<void*>(imageBase+targetBuild->RVA_ALBUM_JACKET),reinterpret_cast<void*>(selectedCode),reinterpret_cast<void*>(imageBase+targetBuild->RVA_ALBUM_SELECTED));return false;}
     tempGet=method(render,"GetTemporary",{"System.Int32","System.Int32"});
     tempRelease=method(render,"ReleaseTemporary",{"UnityEngine.RenderTexture"});
     activeGet=method(render,"get_active",{});activeSet=method(render,"set_active",{"UnityEngine.RenderTexture"});
@@ -156,9 +156,9 @@ static bool readback(int music,std::vector<unsigned char>& png){
     return success;
 }
 static void install(uintptr_t base,void* library){
-    imageBase=base;bool instanceOk=matchesTarget(reinterpret_cast<void*>(base+RVA_ALBUM_INSTANCE),SIG_ALBUM_INSTANCE);
-    bool jacketOk=matchesTarget(reinterpret_cast<void*>(base+RVA_ALBUM_JACKET),SIG_ALBUM_JACKET);
-    bool selectedOk=matchesTarget(reinterpret_cast<void*>(base+RVA_ALBUM_SELECTED),SIG_ALBUM_SELECTED);
+    imageBase=base;bool instanceOk=matchesTarget(reinterpret_cast<void*>(base+targetBuild->RVA_ALBUM_INSTANCE),targetBuild->SIG_ALBUM_INSTANCE);
+    bool jacketOk=matchesTarget(reinterpret_cast<void*>(base+targetBuild->RVA_ALBUM_JACKET),targetBuild->SIG_ALBUM_JACKET);
+    bool selectedOk=matchesTarget(reinterpret_cast<void*>(base+targetBuild->RVA_ALBUM_SELECTED),targetBuild->SIG_ALBUM_SELECTED);
     targetVerified=instanceOk&&jacketOk&&selectedOk;
     __android_log_print(targetVerified?ANDROID_LOG_INFO:ANDROID_LOG_WARN,"OniimaiKanade","Album target verification: Instance=%d Jacket=%d Selected=%d",instanceOk,jacketOk,selectedOk);
     apiReady=targetVerified&&resolveApis(library);

@@ -1,6 +1,6 @@
 # Documentation map
 
-**KanadeDX Oniimai 1.0.0** is an LSPosed API 102 module. Only **KanadeDX-260207.0635 (1.60)** has been tested.
+**KanadeDX Oniimai** is an LSPosed API 102 module. Current source is **1.1.0-rc1**, adding **260721.1649 (1.65)** alongside **260207.0635 (1.60)**. The published 1.0.0 APK remains 1.60-only. [Compatibility and verification](COMPATIBILITY-1.65.md)
 
 ## Use the module
 

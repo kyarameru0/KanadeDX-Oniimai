@@ -1,6 +1,7 @@
 """Read-only verification of the supplied KanadeDX APK against this module.
 
-Usage: python scripts/verify_target.py --apk "path/to/KanadeDX-260207.0635.apk.1"
+Usage: python scripts/verify_target.py --apk "path/to/KanadeDX.apk"
+Selects the 1.60 or 1.65 profile by the ELF build ID, then checks all hashes.
 Requires only Python's standard library. ZIP members are read into memory; no
 original APK content is extracted, modified, or saved to disk.
 """
@@ -41,7 +42,7 @@ def check_hash(actual, expected, label):
 def parse_bytes(contents):
     parts = [part.strip() for part in contents.split(",") if part.strip()]
     require(parts and all(re.fullmatch(r"0x[0-9a-fA-F]{1,2}", p) for p in parts),
-            "Malformed byte array in target_build.h")
+            "Malformed byte array in target profile header")
     return bytes(int(part, 16) for part in parts)
 
 
@@ -59,7 +60,7 @@ def parse_header(header):
     rvas = {key: int(value, 16) for key, value in rva_pairs}
     signatures = {key: int(value, 16) for key, value in sig_pairs}
     require(len(rvas) == len(rva_pairs) and len(signatures) == len(sig_pairs),
-            "Duplicate RVA or signature declarations in target_build.h")
+            "Duplicate RVA or signature declarations in target profile header")
     require(rvas.keys() == signatures.keys(), "RVA/signature names do not match")
     require(len(rvas) == EXPECTED_FUNCTION_COUNT,
             f"Expected {EXPECTED_FUNCTION_COUNT} function fingerprints, found {len(rvas)}")
@@ -117,17 +118,37 @@ def code_at_rva(binary, headers, rva, size):
     return matches[0]
 
 
+def profiles(root):
+    paths = [root / "target-build.json", *sorted((root / "targets").glob("kanade-*.json"))]
+    result = [json.loads(path.read_text(encoding="utf-8")) for path in paths]
+    ids = [target["elf_build_id"] for target in result]
+    require(len(ids) == len(set(ids)), "Duplicate profile build IDs")
+    return result
+
+
 def verify(apk, root):
-    target = json.loads((root / "target-build.json").read_text(encoding="utf-8"))
-    header = (root / "app/src/main/cpp/target_build.h").read_text(encoding="utf-8")
+    with zipfile.ZipFile(apk, "r") as archive:
+        names = archive.namelist()
+        for member in (IL2CPP_MEMBER, METADATA_MEMBER):
+            require(names.count(member) == 1, f"Expected exactly one ZIP member: {member}")
+        binary = archive.read(IL2CPP_MEMBER)
+        metadata = archive.read(METADATA_MEMBER)
+    headers = program_headers(binary)
+    identity = elf_build_id(binary, headers)
+    candidates = [target for target in profiles(root) if target["elf_build_id"] == identity.hex()]
+    require(len(candidates) == 1, f"Unsupported ELF build ID: {identity.hex()}")
+    target = candidates[0]
+    header_path = (root / target["profile_header"]).resolve()
+    require(header_path.is_relative_to((root / "app/src/main/cpp").resolve()), "Invalid profile header path")
+    header = header_path.read_text(encoding="utf-8")
     rvas, signatures, header_id = parse_header(header)
     declared = {}
     for group in ("hooks", "led_hooks", "stats_functions", "ui_functions", "boot_functions", "album_functions", "aime_functions"):
         for key, address in target[group].items():
             name = ("LED_" if group == "led_hooks" else "UI_" if group == "ui_functions" else "BOOT_" if group == "boot_functions" else "ALBUM_" if group == "album_functions" else "AIME_" if group == "aime_functions" else "") + key.upper()
-            require(name not in declared, f"Duplicate target-build.json RVA: {name}")
+            require(name not in declared, f"Duplicate target manifest RVA: {name}")
             declared[name] = int(address, 16)
-    require(declared == rvas, "target-build.json RVAs differ from target_build.h")
+    require(declared == rvas, "Target manifest RVAs differ from profile header")
     for key, symbol in (("settings_typeinfo", "DATA_UI_SETTINGS_TYPEINFO"), ("main_group", "FIELD_UI_MAIN_GROUP")):
         values = re.findall(r"\b" + symbol + r"\s*=\s*(0x[0-9a-fA-F]+)\s*;", header)
         require(len(values) == 1 and int(values[0], 16) == int(target["ui_layout"][key], 16),
@@ -137,19 +158,12 @@ def verify(apk, root):
         values=re.findall(r"\b"+symbol+r"\s*=\s*(0x[0-9a-fA-F]+)\s*;",header)
         require(len(values)==1 and int(values[0],16)==int(target["boot_layout"][key],16),f"Boot field offset mismatch: {symbol}")
     check_hash(sha256_file(apk), target["apk_sha256"], "APK")
-    with zipfile.ZipFile(apk, "r") as archive:
-        names = archive.namelist()
-        for member in (IL2CPP_MEMBER, METADATA_MEMBER):
-            require(names.count(member) == 1, f"Expected exactly one ZIP member: {member}")
-        binary = archive.read(IL2CPP_MEMBER)
-        metadata = archive.read(METADATA_MEMBER)
     check_hash(hashlib.sha256(binary).hexdigest(), target["il2cpp_sha256"], "libil2cpp.so")
     check_hash(hashlib.sha256(metadata).hexdigest(), target["metadata_sha256"], "IL2CPP metadata")
     require(len(metadata) >= 8, "Truncated IL2CPP metadata header")
     magic, metadata_version = struct.unpack_from("<II", metadata)
     require(magic == 0xFAB11BAF, "Unexpected IL2CPP metadata magic")
     require(metadata_version == target["metadata_version"], "IL2CPP metadata version mismatch")
-    headers = program_headers(binary)
     require(elf_build_id(binary, headers) == header_id, "ELF build ID mismatch")
     for key, rva in rvas.items():
         require(fingerprint16(code_at_rva(binary, headers, rva, 16)) == signatures[key],
@@ -163,7 +177,7 @@ def verify(apk, root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apk", required=True, type=Path, help="Original KanadeDX 1.60 APK path")
+    parser.add_argument("--apk", required=True, type=Path, help="Original supported KanadeDX APK path (1.60 or 1.65)")
     args = parser.parse_args()
     try:
         verify(args.apk, Path(__file__).resolve().parents[1])

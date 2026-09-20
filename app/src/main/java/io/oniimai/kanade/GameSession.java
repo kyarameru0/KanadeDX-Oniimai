@@ -249,7 +249,7 @@ final class GameSession implements DashboardHost {
             case 15:return UiText.t("API 102 · 게임 입력 훅 4/4 준비됨");
             case -1:return UiText.t("프레임워크 Native Hook API 미연결 — LSPosed API 102 지원 확인");
             case -2:return UiText.t("Unity 입력 라이브러리 로드 대기");
-            case -3:return UiText.t("지원하지 않는 KanadeDX 빌드 — 260207.0635 필요");
+            case -3:return UiText.t("지원하지 않는 KanadeDX 빌드 — 260207.0635 또는 260721.1649 필요");
             case -4:return UiText.t("입력 코드가 예상과 다름 — 다른 모듈/빌드 확인");
             case -5:return UiText.t("입력 훅 설치 실패 — 게임을 완전히 재시작하세요.");
             default:return UiText.t("입력 훅 상태 ")+nativeStatus;

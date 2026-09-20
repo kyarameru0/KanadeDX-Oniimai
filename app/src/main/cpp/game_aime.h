@@ -207,11 +207,11 @@ static bool anyRead(void* self,const void* method){
 }
 static void install(uintptr_t base,void* library){
     if(hookStatus.load()!=0)return;
-    const uintptr_t errorOffsets[]={RVA_AIME_ERROR_POLL,RVA_AIME_ERROR_RESULT,RVA_AIME_ERROR_WINDOW,RVA_AIME_UNIT_START};
-    const uint64_t errorSignatures[]={SIG_AIME_ERROR_POLL,SIG_AIME_ERROR_RESULT,SIG_AIME_ERROR_WINDOW,SIG_AIME_UNIT_START};
+    const uintptr_t errorOffsets[]={targetBuild->RVA_AIME_ERROR_POLL,targetBuild->RVA_AIME_ERROR_RESULT,targetBuild->RVA_AIME_ERROR_WINDOW,targetBuild->RVA_AIME_UNIT_START};
+    const uint64_t errorSignatures[]={targetBuild->SIG_AIME_ERROR_POLL,targetBuild->SIG_AIME_ERROR_RESULT,targetBuild->SIG_AIME_ERROR_WINDOW,targetBuild->SIG_AIME_UNIT_START};
     for(unsigned i=0;i<4;i++)if(!matchesTarget(reinterpret_cast<void*>(base+errorOffsets[i]),errorSignatures[i])){hookStatus=-4;return;}
-    const uintptr_t offsets[]={RVA_AIME_UPDATE,RVA_AIME_START,RVA_AIME_USE,RVA_AIME_MANAGER_EXECUTE,RVA_AIME_ADVCHECK,RVA_AIME_ANYREAD};
-    const uint64_t signatures[]={SIG_AIME_UPDATE,SIG_AIME_START,SIG_AIME_USE,SIG_AIME_MANAGER_EXECUTE,SIG_AIME_ADVCHECK,SIG_AIME_ANYREAD};
+    const uintptr_t offsets[]={targetBuild->RVA_AIME_UPDATE,targetBuild->RVA_AIME_START,targetBuild->RVA_AIME_USE,targetBuild->RVA_AIME_MANAGER_EXECUTE,targetBuild->RVA_AIME_ADVCHECK,targetBuild->RVA_AIME_ANYREAD};
+    const uint64_t signatures[]={targetBuild->SIG_AIME_UPDATE,targetBuild->SIG_AIME_START,targetBuild->SIG_AIME_USE,targetBuild->SIG_AIME_MANAGER_EXECUTE,targetBuild->SIG_AIME_ADVCHECK,targetBuild->SIG_AIME_ANYREAD};
     for(unsigned i=0;i<6;i++)if(!matchesTarget(reinterpret_cast<void*>(base+offsets[i]),signatures[i])){hookStatus=-4;return;}
 #define AIME_SYMBOL(variable,name) variable=reinterpret_cast<decltype(variable)>(dlsym(library,name));{Dl_info info{};if(!variable||!dladdr(reinterpret_cast<void*>(variable),&info)||reinterpret_cast<uintptr_t>(info.dli_fbase)!=base){hookStatus=-6;return;}}
     AIME_SYMBOL(stringNew,"il2cpp_string_new")

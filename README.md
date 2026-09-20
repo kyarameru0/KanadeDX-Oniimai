@@ -7,12 +7,12 @@
     <img src="docs/assets/overview-light.svg" alt="Oniimai controller to KanadeDX: input, lights, NFC and external display" width="900" />
   </picture>
   <h1>KanadeDX Oniimai</h1>
-  <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX 1.60 on Android.</p>
-  <p><strong>1.0.0</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
+  <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX on Android.</p>
+  <p><strong>1.1.0-rc1 source</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
   <p><a href="#quick-start">Install</a> · <a href="docs/USER_GUIDE.md">Use</a> · <a href="docs/DEVELOPER_GUIDE.md">Understand the code</a> · <a href="docs/BUILD.md">Build</a> · <a href="docs/README.md">All documentation</a></p>
 </div>
 
-**Tested only with KanadeDX-260207.0635 (1.60). Other versions have not been tested.**
+**Current source adds KanadeDX-260721.1649 (1.65), while retaining KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [1.65 validation and update notes](docs/COMPATIBILITY-1.65.md). The published **1.0.0 APK supports 1.60 only**; it does not gain 1.65 support by updating the game.
 
 **New code, tests and documentation were generated and modified with OpenAI Codex.** Requirements and device feedback came from the maintainer. Third-party code retains its own authorship and licenses. [AI disclosure](AI_DISCLOSURE.md)
 

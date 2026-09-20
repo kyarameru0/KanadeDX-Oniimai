@@ -52,7 +52,7 @@ static void settingsCctor(const void* method){
     if(hookStatus.load()!=7)return;
     // The original .cctor initialized this verified TypeInfo slot. Use IL2CPP's
     // field API rather than assuming the runtime's static-field memory layout.
-    void* klass=nullptr;memcpy(&klass,reinterpret_cast<void*>(imageBase+DATA_UI_SETTINGS_TYPEINFO),sizeof(klass));
+    void* klass=nullptr;memcpy(&klass,reinterpret_cast<void*>(imageBase+targetBuild->DATA_UI_SETTINGS_TYPEINFO),sizeof(klass));
     if(klass){void* field=fieldByName(klass,"compactMode");if(field){bool disabled=false;setStaticField(field,&disabled);}}
 }
 static void settingsLoad(void* self,const void* method){
@@ -72,7 +72,7 @@ static void controlUpdate(void* self,const void* method){
         if(!setInteractable)__android_log_print(ANDROID_LOG_ERROR,"OniimaiKanade","External UI hide unavailable: CanvasGroup interactable icall missing");
     }
     if(!setInteractable)return;
-    void* group=nullptr;if(self)memcpy(&group,static_cast<char*>(self)+FIELD_UI_MAIN_GROUP,sizeof(group));
+    void* group=nullptr;if(self)memcpy(&group,static_cast<char*>(self)+targetBuild->FIELD_UI_MAIN_GROUP,sizeof(group));
     uint32_t previous=temporary.handle;
     Objects objects;temporary.update(objects,group,externalActive.load());
     if((previous==0)!=(temporary.handle==0))__android_log_print(ANDROID_LOG_INFO,"OniimaiKanade","Game control UI %s",temporary.handle?"hidden for external output (raycasts/interactable OFF)":"restored on phone");
@@ -80,8 +80,8 @@ static void controlUpdate(void* self,const void* method){
 
 static void install(uintptr_t base,void* library){
     if(hookStatus.load()!=0)return;
-    const uintptr_t offsets[]={RVA_UI_SETTINGS_CCTOR,RVA_UI_SETTINGS_LOAD,RVA_UI_CONTROL_UPDATE,RVA_UI_PREFS_GETINT,RVA_UI_PREFS_SETINT,RVA_UI_PREFS_SAVE,RVA_UI_GROUP_ALPHA_GET,RVA_UI_GROUP_ALPHA_SET,RVA_UI_GROUP_INTERACTABLE_GET,RVA_UI_GROUP_RAYCAST_GET,RVA_UI_GROUP_RAYCAST_SET,RVA_UI_OBJECT_ALIVE};
-    const uint64_t signatures[]={SIG_UI_SETTINGS_CCTOR,SIG_UI_SETTINGS_LOAD,SIG_UI_CONTROL_UPDATE,SIG_UI_PREFS_GETINT,SIG_UI_PREFS_SETINT,SIG_UI_PREFS_SAVE,SIG_UI_GROUP_ALPHA_GET,SIG_UI_GROUP_ALPHA_SET,SIG_UI_GROUP_INTERACTABLE_GET,SIG_UI_GROUP_RAYCAST_GET,SIG_UI_GROUP_RAYCAST_SET,SIG_UI_OBJECT_ALIVE};
+    const uintptr_t offsets[]={targetBuild->RVA_UI_SETTINGS_CCTOR,targetBuild->RVA_UI_SETTINGS_LOAD,targetBuild->RVA_UI_CONTROL_UPDATE,targetBuild->RVA_UI_PREFS_GETINT,targetBuild->RVA_UI_PREFS_SETINT,targetBuild->RVA_UI_PREFS_SAVE,targetBuild->RVA_UI_GROUP_ALPHA_GET,targetBuild->RVA_UI_GROUP_ALPHA_SET,targetBuild->RVA_UI_GROUP_INTERACTABLE_GET,targetBuild->RVA_UI_GROUP_RAYCAST_GET,targetBuild->RVA_UI_GROUP_RAYCAST_SET,targetBuild->RVA_UI_OBJECT_ALIVE};
+    const uint64_t signatures[]={targetBuild->SIG_UI_SETTINGS_CCTOR,targetBuild->SIG_UI_SETTINGS_LOAD,targetBuild->SIG_UI_CONTROL_UPDATE,targetBuild->SIG_UI_PREFS_GETINT,targetBuild->SIG_UI_PREFS_SETINT,targetBuild->SIG_UI_PREFS_SAVE,targetBuild->SIG_UI_GROUP_ALPHA_GET,targetBuild->SIG_UI_GROUP_ALPHA_SET,targetBuild->SIG_UI_GROUP_INTERACTABLE_GET,targetBuild->SIG_UI_GROUP_RAYCAST_GET,targetBuild->SIG_UI_GROUP_RAYCAST_SET,targetBuild->SIG_UI_OBJECT_ALIVE};
     for(unsigned i=0;i<sizeof(offsets)/sizeof(offsets[0]);i++)if(!matchesTarget(reinterpret_cast<void*>(base+offsets[i]),signatures[i])){hookStatus=-4;return;}
 #define UI_SYMBOL(variable,name) variable=reinterpret_cast<decltype(variable)>(dlsym(library,name));if(!variable){hookStatus=-6;return;}
     UI_SYMBOL(stringNew,"il2cpp_string_new")
@@ -93,9 +93,9 @@ static void install(uintptr_t base,void* library){
     UI_SYMBOL(freeHandle,"il2cpp_gchandle_free")
 #undef UI_SYMBOL
 #define UI_ADDRESS(variable,rva) variable=reinterpret_cast<decltype(variable)>(base+rva)
-    UI_ADDRESS(prefsGetInt,RVA_UI_PREFS_GETINT);UI_ADDRESS(prefsSetInt,RVA_UI_PREFS_SETINT);UI_ADDRESS(prefsSave,RVA_UI_PREFS_SAVE);
-    UI_ADDRESS(getAlpha,RVA_UI_GROUP_ALPHA_GET);UI_ADDRESS(setAlpha,RVA_UI_GROUP_ALPHA_SET);UI_ADDRESS(getInteractable,RVA_UI_GROUP_INTERACTABLE_GET);
-    UI_ADDRESS(getRaycasts,RVA_UI_GROUP_RAYCAST_GET);UI_ADDRESS(setRaycasts,RVA_UI_GROUP_RAYCAST_SET);UI_ADDRESS(objectAlive,RVA_UI_OBJECT_ALIVE);
+    UI_ADDRESS(prefsGetInt,targetBuild->RVA_UI_PREFS_GETINT);UI_ADDRESS(prefsSetInt,targetBuild->RVA_UI_PREFS_SETINT);UI_ADDRESS(prefsSave,targetBuild->RVA_UI_PREFS_SAVE);
+    UI_ADDRESS(getAlpha,targetBuild->RVA_UI_GROUP_ALPHA_GET);UI_ADDRESS(setAlpha,targetBuild->RVA_UI_GROUP_ALPHA_SET);UI_ADDRESS(getInteractable,targetBuild->RVA_UI_GROUP_INTERACTABLE_GET);
+    UI_ADDRESS(getRaycasts,targetBuild->RVA_UI_GROUP_RAYCAST_GET);UI_ADDRESS(setRaycasts,targetBuild->RVA_UI_GROUP_RAYCAST_SET);UI_ADDRESS(objectAlive,targetBuild->RVA_UI_OBJECT_ALIVE);
 #undef UI_ADDRESS
     imageBase=base;
     void* hooks[]={reinterpret_cast<void*>(settingsCctor),reinterpret_cast<void*>(settingsLoad),reinterpret_cast<void*>(controlUpdate)};

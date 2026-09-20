@@ -1,4 +1,5 @@
 #include "../app/src/main/cpp/target_fingerprint.h"
+#include "../app/src/main/cpp/target_build.h"
 #include "../app/src/main/cpp/input_state.h"
 #include "../app/src/main/cpp/led_state.h"
 #include "../app/src/main/cpp/stats_state.h"
@@ -34,6 +35,25 @@ struct FakeUiObjects {
 };
 extern "C" EXPORT int run_tests(){
     int checks=0;InputState s;
+    CHECK(targetByBuildId(nullptr,20)==nullptr);
+    const TargetBuild* profiles[]={&Target160::PROFILE,&Target165::PROFILE};
+    for(const auto* profile:profiles){
+        CHECK(targetByBuildId(profile->buildId,profile->buildIdSize)==profile);
+        CHECK(targetByBuildId(profile->buildId,profile->buildIdSize-1)==nullptr);
+        CHECK(targetByBuildId(profile->buildId,profile->buildIdSize+1)==nullptr);
+        unsigned char changed[20];
+        for(unsigned i=0;i<20;i++)changed[i]=profile->buildId[i];
+        for(unsigned i=0;i<20;i++){
+            changed[i]^=0x80;
+            CHECK(targetByBuildId(changed,20)==nullptr);
+            changed[i]^=0x80;
+        }
+    }
+    CHECK(targetByBuildId(Target160::BUILD_ID,20)->RVA_TOUCH==0x27a6fac);
+    CHECK(targetByBuildId(Target165::BUILD_ID,20)->RVA_TOUCH==0x275a088);
+    CHECK(targetByBuildId(Target160::BUILD_ID,20)->RVA_BOOT_STARTED==0x22fb79c);
+    CHECK(targetByBuildId(Target165::BUILD_ID,20)->RVA_BOOT_STARTED==0x22dc6b0);
+    CHECK(Target160::PROFILE.DATA_UI_SETTINGS_TYPEINFO!=Target165::PROFILE.DATA_UI_SETTINGS_TYPEINFO);
     unsigned char fingerprintFixture[16];
     for(unsigned i=0;i<16;i++)fingerprintFixture[i]=static_cast<unsigned char>(i);
     CHECK(targetFingerprint16(fingerprintFixture)==UINT64_C(0x7c84dc9477851775));

@@ -23,7 +23,7 @@ A scoped inventory of local implementation, adapted third-party code, protocol r
 
 ## Target facts
 
-`target-build.json`, native RVAs and field offsets describe the supported user-supplied KanadeDX build. Function compatibility checks store hashes, not raw original instruction bytes. The verifier reads a local authorized APK. No full IL2CPP binary, metadata dump, decompiled source or game asset is included. This minimizes distributed material but does not establish permission for reverse-derived interoperability facts or a legally separate work; see [review](LEGAL_REVIEW.md).
+`target-build.json`, `targets/*.json`, native RVAs and field offsets describe the supported user-supplied KanadeDX builds. Function compatibility checks store hashes, not raw original instruction bytes. The verifier reads a local authorized APK. No full IL2CPP binary, metadata dump, decompiled source or game asset is included. This minimizes distributed material but does not establish permission for reverse-derived interoperability facts or a legally separate work; see [review](LEGAL_REVIEW.md).
 
 The host's public references are [kdx.nightcord.com.de](https://kdx.nightcord.com.de/) and [KanadeDX/Public releases](https://github.com/KanadeDX/Public/releases). These identify the host/distribution context, not an open-source game dependency or a modification license. [Checked permission evidence](HOST_PERMISSIONS.md)
 

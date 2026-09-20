@@ -201,12 +201,12 @@ This last command validates Kotlin/Java integration but does not produce an inst
 
 ## Install and check your own build
 
-The default output in the build guide is `work/Oniimai-Kanade-API102-1.0.0.apk`. Select your test device explicitly if more than one is connected:
+The default output in the build guide is `work/Oniimai-Kanade-API102-1.1.0-rc1.apk`. Select your test device explicitly if more than one is connected:
 
 ```powershell
 adb devices
 $recipeDevice = 'YOUR_DEVICE_SERIAL'
-adb -s $recipeDevice install --no-incremental -r work/Oniimai-Kanade-API102-1.0.0.apk
+adb -s $recipeDevice install --no-incremental -r work/Oniimai-Kanade-API102-1.1.0-rc1.apk
 adb -s $recipeDevice shell am force-stop app.KanadeDX
 ```
 

@@ -82,13 +82,13 @@ static bool patchRet(uintptr_t address){
 }
 static void install(uintptr_t base){
     if(installStatus.load()!=0)return;
-    if(!matchesTarget(reinterpret_cast<void*>(base+RVA_LED_PWM),SIG_LED_PWM)||
-       !matchesTarget(reinterpret_cast<void*>(base+RVA_LED_BLOCK_COLOR),SIG_LED_BLOCK_COLOR)){
+    if(!matchesTarget(reinterpret_cast<void*>(base+targetBuild->RVA_LED_PWM),targetBuild->SIG_LED_PWM)||
+       !matchesTarget(reinterpret_cast<void*>(base+targetBuild->RVA_LED_BLOCK_COLOR),targetBuild->SIG_LED_BLOCK_COLOR)){
         installStatus=-1;
-    }else if(hookFunction(reinterpret_cast<void*>(base+RVA_LED_BLOCK_COLOR),reinterpret_cast<void*>(blockColor),reinterpret_cast<void**>(&originalBlockColor))!=0){
+    }else if(hookFunction(reinterpret_cast<void*>(base+targetBuild->RVA_LED_BLOCK_COLOR),reinterpret_cast<void*>(blockColor),reinterpret_cast<void**>(&originalBlockColor))!=0){
         installStatus=-1;
-    }else if(!patchRet(base+RVA_LED_PWM)){
-        installStatus=-1;unhookFunction(reinterpret_cast<void*>(base+RVA_LED_BLOCK_COLOR));
+    }else if(!patchRet(base+targetBuild->RVA_LED_PWM)){
+        installStatus=-1;unhookFunction(reinterpret_cast<void*>(base+targetBuild->RVA_LED_BLOCK_COLOR));
     }
     if(installStatus.load()!=1){
         pthread_mutex_lock(&ledLock);leds.seen&=~(1u<<LedState::BILLBOARD);pthread_mutex_unlock(&ledLock);

@@ -11,6 +11,9 @@
 #include "led_state.h"
 #include "target_build.h"
 
+// Assigned under installLock before publishing hooks; never switched afterward.
+static const TargetBuild* targetBuild=nullptr;
+
 using HookFun = int (*)(void*,void*,void**);
 using UnhookFun = int (*)(void*);
 using LibraryCallback = void (*)(const char*,void*);
@@ -81,8 +84,8 @@ static void ledFetHook(void* self,uint8_t index,uint8_t value,const void* method
 }
 static void installLeds(uintptr_t base){
     if(ledStatus.load()!=0)return;
-    const uintptr_t offsets[]={RVA_LED_COLOR,RVA_LED_PRESS,RVA_LED_ALL,RVA_LED_OFF,RVA_LED_FADE,RVA_LED_RING,RVA_LED_FET,RVA_LED_RING_FADE};
-    const uint64_t signatures[]={SIG_LED_COLOR,SIG_LED_PRESS,SIG_LED_ALL,SIG_LED_OFF,SIG_LED_FADE,SIG_LED_RING,SIG_LED_FET,SIG_LED_RING_FADE};
+    const uintptr_t offsets[]={targetBuild->RVA_LED_COLOR,targetBuild->RVA_LED_PRESS,targetBuild->RVA_LED_ALL,targetBuild->RVA_LED_OFF,targetBuild->RVA_LED_FADE,targetBuild->RVA_LED_RING,targetBuild->RVA_LED_FET,targetBuild->RVA_LED_RING_FADE};
+    const uint64_t signatures[]={targetBuild->SIG_LED_COLOR,targetBuild->SIG_LED_PRESS,targetBuild->SIG_LED_ALL,targetBuild->SIG_LED_OFF,targetBuild->SIG_LED_FADE,targetBuild->SIG_LED_RING,targetBuild->SIG_LED_FET,targetBuild->SIG_LED_RING_FADE};
     void* hooks[]={reinterpret_cast<void*>(ledColorHook),reinterpret_cast<void*>(ledPressHook),reinterpret_cast<void*>(ledAllHook),reinterpret_cast<void*>(ledOffHook),reinterpret_cast<void*>(ledFadeHook),reinterpret_cast<void*>(ledRingHook),reinterpret_cast<void*>(ledFetHook),reinterpret_cast<void*>(ledRingFadeHook)};
     void** originals[]={reinterpret_cast<void**>(&originalLedColor),reinterpret_cast<void**>(&originalLedPress),reinterpret_cast<void**>(&originalLedAll),reinterpret_cast<void**>(&originalLedOff),reinterpret_cast<void**>(&originalLedFade),reinterpret_cast<void**>(&originalLedRing),reinterpret_cast<void**>(&originalLedFet),reinterpret_cast<void**>(&originalLedRingFade)};
     for(int i=0;i<8;i++)if(!matchesTarget(reinterpret_cast<void*>(base+offsets[i]),signatures[i])){ledStatus=-4;return;}
@@ -123,24 +126,24 @@ static bool downHook(void* self,int id,const void* method){
     pthread_mutex_lock(&stateLock);bool added=state.button(id,true,nowMs());pthread_mutex_unlock(&stateLock);
     return real||added;
 }
-static bool identity(uintptr_t base){
+static const TargetBuild* identity(uintptr_t base){
     const auto* e=reinterpret_cast<const Elf64_Ehdr*>(base);
-    if(memcmp(e->e_ident,ELFMAG,SELFMAG)||e->e_machine!=EM_AARCH64||e->e_phnum>128)return false;
+    if(memcmp(e->e_ident,ELFMAG,SELFMAG)||e->e_machine!=EM_AARCH64||e->e_phnum>128)return nullptr;
     const auto* ph=reinterpret_cast<const Elf64_Phdr*>(base+e->e_phoff);
     for(int i=0;i<e->e_phnum;i++)if(ph[i].p_type==PT_NOTE){
         const unsigned char* p=reinterpret_cast<const unsigned char*>(base+ph[i].p_vaddr);
         const unsigned char* end=p+ph[i].p_memsz;
         while(end-p>=12){
             Elf64_Nhdr h;memcpy(&h,p,12);p+=12;
-            if(h.n_namesz>1024||h.n_descsz>4096)return false;
+            if(h.n_namesz>1024||h.n_descsz>4096)return nullptr;
             size_t ns=(h.n_namesz+3)&~3u,ds=(h.n_descsz+3)&~3u;
-            if(size_t(end-p)<ns+ds)return false;
+            if(size_t(end-p)<ns+ds)return nullptr;
             if(h.n_type==NT_GNU_BUILD_ID&&h.n_namesz==4&&!memcmp(p,"GNU",4))
-                return h.n_descsz==sizeof(BUILD_ID)&&!memcmp(p+ns,BUILD_ID,sizeof(BUILD_ID));
+                return targetByBuildId(p+ns,h.n_descsz);
             p+=ns+ds;
         }
     }
-    return false;
+    return nullptr;
 }
 static void install(void* handle){
     if(!hookFunction||!unhookFunction||!handle)return;
@@ -149,9 +152,12 @@ static void install(void* handle){
     Dl_info info{};void* symbol=dlsym(handle,"il2cpp_init");
     if(!symbol||!dladdr(symbol,&info)||!info.dli_fbase){status=-2;pthread_mutex_unlock(&installLock);return;}
     uintptr_t base=reinterpret_cast<uintptr_t>(info.dli_fbase);
-    if(!identity(base)){status=-3;pthread_mutex_unlock(&installLock);return;}
-    const uintptr_t offsets[]={RVA_TOUCH,RVA_RAW,RVA_DOWN,RVA_FRAME};
-    const uint64_t signatures[]={SIG_TOUCH,SIG_RAW,SIG_DOWN,SIG_FRAME};
+    const auto* profile=identity(base);
+    if(!profile||(targetBuild&&targetBuild!=profile)){status=-3;pthread_mutex_unlock(&installLock);return;}
+    targetBuild=profile;
+    __android_log_print(ANDROID_LOG_INFO,"OniimaiKanade","Selected verified profile: %s",profile->name);
+    const uintptr_t offsets[]={targetBuild->RVA_TOUCH,targetBuild->RVA_RAW,targetBuild->RVA_DOWN,targetBuild->RVA_FRAME};
+    const uint64_t signatures[]={targetBuild->SIG_TOUCH,targetBuild->SIG_RAW,targetBuild->SIG_DOWN,targetBuild->SIG_FRAME};
     void* replacements[]={reinterpret_cast<void*>(touchHook),reinterpret_cast<void*>(rawHook),reinterpret_cast<void*>(downHook),reinterpret_cast<void*>(frameHook)};
     void** backups[]={reinterpret_cast<void**>(&originalTouch),reinterpret_cast<void**>(&originalRaw),reinterpret_cast<void**>(&originalDown),reinterpret_cast<void**>(&originalFrame)};
     for(int i=0;i<4;i++)if(!matchesTarget(reinterpret_cast<void*>(base+offsets[i]),signatures[i])){

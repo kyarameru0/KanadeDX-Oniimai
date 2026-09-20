@@ -1,4 +1,4 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans-serif</item><item name="android:colorAccent">#3482FF</item><item name="android:windowLightStatusBar">true</item><item name="android:windowLightNavigationBar">true</item><item name="android:statusBarColor">#F7F7F7</item><item name="android:navigationBarColor">#F7F7F7</item><item name="android:windowBackground">#F7F7F7</item></style>
-    <string name="module_description">Oniimai controller input and 90-degree portrait game rotation for landscape external display for KanadeDX 1.60 (260207.0635). Modern Xposed API 102.</string>
+    <string name="module_description">Oniimai controller input, RGB and external display for KanadeDX 1.60 (260207.0635) and 1.65 (260721.1649). Modern Xposed API 102.</string>
 </resources>

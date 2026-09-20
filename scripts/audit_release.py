@@ -39,9 +39,9 @@ for f in files:
             if target and not (f.parent / target).exists():
                 errors.append('Broken local link in ' + relative + ': ' + target)
 
-header = (root / 'app/src/main/cpp/target_build.h').read_text()
-if re.search(r'SIG_\w+\[\]\s*=\s*\{', header):
-    errors.append('Raw target instruction signatures remain')
+for header_path in (root / 'app/src/main/cpp').glob('target_*.h'):
+    if re.search(r'SIG_\w+\[\]\s*=\s*\{', header_path.read_text()):
+        errors.append('Raw target instruction signatures remain: ' + header_path.name)
 inventory = json.loads((root / 'dependency-inventory.json').read_text())
 if not all(row.get('licenses') and row.get('source_sha256') for row in inventory):
     errors.append('Incomplete dependency license/source inventory')
