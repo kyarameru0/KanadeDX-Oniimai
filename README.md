@@ -84,6 +84,7 @@ Blocking I/O stays on workers. Input snapshots cross JNI into game hooks. Extern
 | Document | Start here for |
 | --- | --- |
 | [Developer guide](docs/DEVELOPER_GUIDE.md) | Start here: vocabulary, worked examples, code paths and a first-change workflow |
+| [Implementation recipes](docs/IMPLEMENTATION_RECIPES.md) | Apply complete example patches for a setting, widget or USB alias; compile, verify and undo |
 | [Architecture](docs/ARCHITECTURE.md) | Entry points, thread ownership, diagrams and code excerpts |
 | [Build](docs/BUILD.md) | SDK/NDK/JDK/Gradle, signing, host tests and optional target verification |
 | [Contributing](CONTRIBUTING.md) | Change boundaries, provenance, validation and AI disclosure |

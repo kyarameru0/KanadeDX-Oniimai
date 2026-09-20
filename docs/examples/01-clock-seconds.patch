@@ -1,0 +1,50 @@
+--- a/app/src/main/java/io/oniimai/kanade/GameSession.java
++++ b/app/src/main/java/io/oniimai/kanade/GameSession.java
+@@ -373,6 +373,9 @@
+             choose(tr("회전 방향","旋转方向"),new String[]{UiText.t("시계 90°"),UiText.t("반시계 90°")},displayOutput.isClockwise()?0:1,n->{displayOutput.setClockwise(n==0);renderTab();}));
+         output.row(UiText.t("외부 디스플레이 선택"),tr("연결된 모니터 목록","已连接的显示器"),displayOutput::choose);
+         NativeSettings.Group phone=settingsGroup(UiText.t("휴대폰 화면"));
++        phone.toggle(tr("시계 초 표시","时钟显示秒"),tr("대시보드 시계에 초 단위를 표시","在仪表盘时钟中显示秒"),
++            prefs.getBoolean("dashboard_clock_seconds",false),
++            value->prefs.edit().putBoolean("dashboard_clock_seconds",value).apply());
+         phone.toggle(tr("세로 화면","纵向画面"),tr("휴대폰 게임 영역을 9:16으로 표시","将手机游戏区域设为 9:16"),displayOutput.isPhonePortrait(),value->displayOutput.setPhonePortrait(value));
+         phone.row(tr("위젯 대시보드","小组件仪表盘"),tr("미리보기 및 배치 편집","预览和编辑布局"),()->{if(panel!=null)panel.dismiss();displayOutput.previewDashboard();});
+         NativeSettings.Group help=settingsGroup(UiText.t("연결 안내"));
+--- a/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
++++ b/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
+@@ -39,13 +39,18 @@
+     var led by mutableStateOf("")
+     var output by mutableStateOf("")
+     var sensors by mutableStateOf("")
+-    var minute by mutableLongStateOf(0)
++    var clockMillis by mutableLongStateOf(0)
++    var clockSeconds by mutableStateOf(false)
+     var width by mutableIntStateOf(2)
+     fun update(frame: JSONObject, stale: Boolean, cover: Bitmap?, host: DashboardHost, type: String) {
+         this.frame = frame; this.stale = stale; this.cover = cover
+         if (type == "connection") { input = host.connectionDescription(); led = host.ledDescription(); output = host.displayDescription() }
+         if (type == "sensors") { val d = host.diagnostic(); sensors = "T ${java.lang.Long.bitCount(d[1])}/34   B ${Integer.bitCount(d[0].toInt() and 255)}/8   P1 ${if (d[0] and 256L != 0L) "ON" else "OFF"}" }
+-        if (type == "clock") minute = System.currentTimeMillis() / 60000
++        if (type == "clock") {
++            clockSeconds = host.prefs().getBoolean("dashboard_clock_seconds", false)
++            val unit = if (clockSeconds) 1000L else 60000L
++            clockMillis = System.currentTimeMillis() / unit * unit
++        }
+     }
+ }
+ 
+@@ -120,8 +125,12 @@
+         }
+         "clock" -> {
+             val context = LocalContext.current
+-            val date = remember(state.minute) { Date(state.minute * 60000) }
+-            val format = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
++            val date = remember(state.clockMillis) { Date(state.clockMillis) }
++            val format = if (android.text.format.DateFormat.is24HourFormat(context)) {
++                if (state.clockSeconds) "HH:mm:ss" else "HH:mm"
++            } else {
++                if (state.clockSeconds) "h:mm:ss" else "h:mm"
++            }
+             if (state.width == 4) Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                 Metric(SimpleDateFormat(format, uiLocale()).format(date), true)
+                 Caption(SimpleDateFormat("M.d E", uiLocale()).format(date))

@@ -2,6 +2,8 @@
 
 Read [Developer guide](docs/DEVELOPER_GUIDE.md), [Architecture](docs/ARCHITECTURE.md) and [Build](docs/BUILD.md) first.
 
+[Implementation recipes](docs/IMPLEMENTATION_RECIPES.md) provides optional, complete patches for learning the settings, widget and port-selection paths. They are exercises, not release features; start each one from a clean checkout.
+
 ## Where to change things
 
 - Port roles and parsers: `PortSelection`, `Protocol`, `Io4Input`, `AimeProtocol`.

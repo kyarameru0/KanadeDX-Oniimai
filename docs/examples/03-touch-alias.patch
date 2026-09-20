@@ -1,0 +1,25 @@
+--- a/app/src/main/java/io/oniimai/kanade/PortSelection.java
++++ b/app/src/main/java/io/oniimai/kanade/PortSelection.java
+@@ -12,6 +12,8 @@
+         if(hid && n.startsWith("i/o control bd;15257;"))return IO4;
+         if (!n.startsWith("onii-mai ") && !n.startsWith("oniimai ")) return NONE;
+         if(hid)return n.endsWith(" io4")||n.endsWith(" io4 hid")?IO4:NONE;
++        // Tutorial alias only: confirm a real firmware descriptor before adopting.
++        if (n.equals("onii-mai touch stream")) return TOUCH;
+         if (n.endsWith(" command")) return COMMAND;
+         if (n.endsWith(" touch")) return TOUCH;
+         if (n.endsWith(" led")) return LED;
+--- a/tests/HardwareSelectionTest.java
++++ b/tests/HardwareSelectionTest.java
+@@ -25,6 +25,11 @@
+         check(PortSelection.unique(new String[]{"1:2:4:serialB","1:2:4:serialA"},"1:2:4:serialA")==1,"serial selects original device");
+         check(PortSelection.unique(new String[]{"1:2:8:serialA"},"1:2:4:serialA")==-1,"command interface cannot replace saved touch");
+         check(PortSelection.unique(new String[]{"1:2:4:serialB"},"1:2:4:serialA")==-1,"other serial is not substituted");
++        check(PortSelection.role("ONII-MAI Touch Stream ",false)==PortSelection.TOUCH,"Tutorial CDC alias normalizes case/space");
++        check(PortSelection.role("onii-mai touch stream",true)==PortSelection.NONE,"Alias cannot capture HID");
++        check(PortSelection.role("Other Touch Stream",false)==PortSelection.NONE,"Unrelated prefix remains excluded");
++        check(PortSelection.automaticTouch(new String[]{"onii-mai Touch","onii-mai touch stream"},new boolean[]{false,false})==-2,"Alias and standard descriptor stay ambiguous");
++        check(PortSelection.protocol("onii-mai touch stream",false,0)==1,"Alias uses streaming protocol");
+         Map<String,Object> defaults=SetupDefaults.missing(Collections.emptyMap());
+         check(Boolean.FALSE.equals(defaults.get("setup_complete")),"fresh install starts wizard");
+         check(Boolean.FALSE.equals(defaults.get("touch_command")),"default9600 touch protocol");

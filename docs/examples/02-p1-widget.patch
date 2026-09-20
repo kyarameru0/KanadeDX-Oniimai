@@ -1,0 +1,105 @@
+--- a/app/src/main/java/io/oniimai/kanade/DashboardLayout.java
++++ b/app/src/main/java/io/oniimai/kanade/DashboardLayout.java
+@@ -12,11 +12,11 @@
+     static final int MAX_ITEMS = 20;
+     static final String SONG = "song", SCORE = "score", JUDGMENTS = "judgments",
+             TIMING = "timing", SENSORS = "sensors",
+-            CONNECTION = "connection", CLOCK = "clock";
++            CONNECTION = "connection", CLOCK = "clock", P1 = "p1";
+     private static final String HEADER = "oniimai-dashboard-v2";
+     private static final String LEGACY_HEADER = "oniimai-dashboard-v1";
+     private static final List<String> TYPES = Collections.unmodifiableList(Arrays.asList(
+-            SONG, SCORE, JUDGMENTS, TIMING, SENSORS, CONNECTION, CLOCK));
++            SONG, SCORE, JUDGMENTS, TIMING, SENSORS, CONNECTION, CLOCK, P1));
+ 
+     static final class Item {
+         final int id, x, y, w, h;
+--- a/app/src/main/java/io/oniimai/kanade/DashboardView.java
++++ b/app/src/main/java/io/oniimai/kanade/DashboardView.java
+@@ -12,7 +12,7 @@
+ final class DashboardView extends LinearLayout implements SharedPreferences.OnSharedPreferenceChangeListener {
+     static final String KEY = "dashboardLayoutV1";
+     private static final String DRAFT_KEY = KEY + "Draft";
+-    private static final String[] TYPES = {"song","score","judgments","timing","sensors","connection","clock"};
++    private static final String[] TYPES = {"song","score","judgments","timing","sensors","connection","clock","p1"};
+     private final DashboardHost host;
+     private final boolean preview;
+     private final Runnable close;
+@@ -76,6 +76,7 @@
+         case "timing":return "FAST / LATE";
+         case "sensors":return GameUi.tr("터치 · 버튼","触摸 · 按钮");
+         case "connection":return GameUi.tr("장치 상태","设备状态");
++        case "p1":return "P1 / START";
+         default:return GameUi.tr("시계","时钟");
+     }}
+     private static String description(String type){switch(type){
+@@ -85,6 +86,7 @@
+         case "timing":return GameUi.tr("빠른 판정과 늦은 판정 비교","比较偏快和偏慢的判定");
+         case "sensors":return GameUi.tr("실제 34개 터치 영역과 버튼 입력","34 个真实触摸区和按钮状态");
+         case "connection":return GameUi.tr("USB 입력, LED와 외부 화면 상태","USB 输入、LED 和外接屏幕状态");
++        case "p1":return GameUi.tr("P1 버튼의 현재 상태","P1 按钮当前状态");
+         default:return GameUi.tr("현재 시간과 날짜","当前时间和日期");
+     }}
+     private void chrome(){
+--- a/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
++++ b/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
+@@ -39,10 +39,12 @@
+     var led by mutableStateOf("")
+     var output by mutableStateOf("")
+     var sensors by mutableStateOf("")
++    var p1 by mutableStateOf(false)
+     var minute by mutableLongStateOf(0)
+     var width by mutableIntStateOf(2)
+     fun update(frame: JSONObject, stale: Boolean, cover: Bitmap?, host: DashboardHost, type: String) {
+         this.frame = frame; this.stale = stale; this.cover = cover
++        if (type == "p1") p1 = host.diagnostic()[0] and 256L != 0L
+         if (type == "connection") { input = host.connectionDescription(); led = host.ledDescription(); output = host.displayDescription() }
+         if (type == "sensors") { val d = host.diagnostic(); sensors = "T ${java.lang.Long.bitCount(d[1])}/34   B ${Integer.bitCount(d[0].toInt() and 255)}/8   P1 ${if (d[0] and 256L != 0L) "ON" else "OFF"}" }
+         if (type == "clock") minute = System.currentTimeMillis() / 60000
+@@ -82,6 +84,11 @@
+     val live = !state.stale && data.optBoolean("game", false)
+     fun number(key: String) = if (live) data.optLong(key).toString() else "—"
+     when (type) {
++        "p1" -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
++            Metric(if (state.p1) "ON" else "OFF", true)
++            Spacer(Modifier.height(OniTokens.space))
++            Caption("P1 / START")
++        }
+         "song" -> SongWidget(state, live)
+         "score" -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+             Caption("Achievement")
+--- a/tests/DashboardLayoutTest.java
++++ b/tests/DashboardLayoutTest.java
+@@ -47,8 +47,9 @@
+                 + "7|connection|2|4|2|2\n8|clock|0|6|4|2";
+         same(photoDefaults, defaults, "Default arrangement matches the supplied photo");
+         same(photoDefaults, DashboardLayout.parse(null).encode(), "First launch uses photo arrangement");
+-        check(layout.items().stream().map(item -> item.type).distinct().count() == DashboardLayout.types().size(),
+-                "Defaults include all seven remaining widget types exactly once");
++        check(layout.items().stream().map(item -> item.type).distinct().count() == 7
++                && layout.items().stream().allMatch(item -> DashboardLayout.knownType(item.type)),
++                "Seven registered default types; P1 remains optional");
+         String previousPhoto = "oniimai-dashboard-v2|8\n1|song|0|0|4|2\n2|graph|0|2|2|2\n"
+                 + "3|judgments|2|2|2|2\n4|sensors|0|4|2|2\n5|timing|2|4|2|2\n"
+                 + "6|connection|0|6|4|2\n7|clock|0|8|4|2";
+@@ -62,7 +63,7 @@
+                 "Saved previous default or custom arrangement is not overwritten by new defaults");
+         check(defaults.startsWith("oniimai-dashboard-v2|"), "New layouts persist as version 2");
+         same(defaults, DashboardLayout.parse(defaults).encode(), "Persist every default coordinate and size");
+-        check(DashboardLayout.types().size() == 7, "Seven available widget types");
++        check(DashboardLayout.types().size() == 8, "Eight available widget types including optional P1");
+         check(!DashboardLayout.knownType("graph") && DashboardLayout.empty().add("graph")==null,
+                 "Progress/density cannot be added from the catalog or through layout API");
+         DashboardLayout retiredDuplicates=DashboardLayout.parse("oniimai-dashboard-v2|31\n"
+@@ -306,6 +307,11 @@
+         check(resizeFailure.resizeAndPack(16, 4, 2) && resizeFailure.get(16).y == 60 && resizeFailure.get(17).y == 62,
+                 "Freeing enough space permits the same overlapping resize without losing other widgets");
+         valid(resizeFailure);
++        DashboardLayout p1Board = DashboardLayout.empty();
++        DashboardLayout.Item p1 = p1Board.add(DashboardLayout.P1);
++        check(p1 != null && p1.w == 2 && p1.h == 2, "P1 adds as a 2x2 tile");
++        check(p1Board.resizeAndPack(p1.id, 4, 2), "P1 supports 4x2");
++        same(DashboardLayout.P1, DashboardLayout.parse(p1Board.encode()).get(p1.id).type, "P1 survives save/load");
+         System.out.println("DashboardLayout: " + checks + " checks passed");
+     }
+ }

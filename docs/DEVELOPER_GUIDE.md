@@ -2,6 +2,15 @@
 
 This guide explains the module without assuming experience with Unity hooks or USB controllers. It describes the current implementation, including its limits. Start here, then use [Architecture](ARCHITECTURE.md) for the component map and [Build](BUILD.md) for commands.
 
+**Ready to implement a feature?** Open [Implementation recipes](IMPLEMENTATION_RECIPES.md). It includes complete, independently checked patches for a saved clock setting, an optional P1 widget and a USB-name alias, with apply/undo commands and expected results. Use this guide as the explanation beside those exercises.
+
+| If you want to… | Start with |
+| --- | --- |
+| Add a switch and save its value | [Clock-seconds recipe](IMPLEMENTATION_RECIPES.md#clock-seconds) |
+| Add a widget from existing controller data | [P1 widget recipe](IMPLEMENTATION_RECIPES.md#p1-widget) |
+| Extend port detection without changing the protocol | [Touch-alias recipe](IMPLEMENTATION_RECIPES.md#touch-alias) |
+| Understand why input/NFC/display code is split up | The event walkthroughs below |
+
 ## Your first pass through the repository
 
 You do not need a game APK or controller to understand the code or run host tests. Start with one flow instead of reading the entire native bridge.
@@ -21,7 +30,7 @@ You do not need a game APK or controller to understand the code or run host test
 | `target-build.json` | Identity and checked locations for the supported game build. |
 | `docs/` | User guide, this walkthrough and protocol references. |
 
-The [documentation map](README.md) provides a shorter reading route for each task.
+The [documentation map](README.md) provides a shorter reading route for each task. Examples are source exercises and do not enable extra features in the released APK.
 
 ## What this project produces
 

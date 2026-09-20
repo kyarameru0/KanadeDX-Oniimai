@@ -1,5 +1,7 @@
 # Build and test
 
+For a guided first change, use [Implementation recipes](IMPLEMENTATION_RECIPES.md). Those optional patches include focused checks and an installation workflow. The commands here build the full module from the repository root; adjust the example tool paths to your installation.
+
 ## Toolchain used for 1.0.0
 
 - JDK 17 and Python 3.12 (standard-library scripts).

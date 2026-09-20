@@ -15,6 +15,7 @@ Follow **Developer guide → Architecture → Build**. You can build and run hos
 | Document | What you will learn |
 | --- | --- |
 | [Developer guide](DEVELOPER_GUIDE.md) | Vocabulary, startup flow, worked input/NFC examples and how to make a small change. |
+| [Implementation recipes](IMPLEMENTATION_RECIPES.md) | Complete example patches: a saved setting, a P1 tile and port recognition; apply, verify, undo and troubleshoot. |
 | [Architecture](ARCHITECTURE.md) | Which component owns each operation, with diagrams and code excerpts. |
 | [Build and test](BUILD.md) | Tool paths, commands, signing and verification. |
 | [Controller protocol](CONTROLLER_PROTOCOL.md) | Port roles, sensor/button masks and lighting messages. |
