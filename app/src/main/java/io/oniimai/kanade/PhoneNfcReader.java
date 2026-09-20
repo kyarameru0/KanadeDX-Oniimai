@@ -81,10 +81,14 @@ final class PhoneNfcReader implements ServiceConnection,NfcAdapter.ReaderCallbac
         Bundle data=message.getData();byte[] code=data.getByteArray("code");
         try{
             if(destroyed||message.what!=PhoneNfcService.RESULT||!enabled||read.token()==0||data.getLong("token")!=read.token())return true;
-            // Only the module service UID can complete a request. The Messenger is
-            // also an unbroadcast, per-session capability sent on our explicit bind.
-            int expected=activity.getPackageManager().getApplicationInfo("io.oniimai.kanade",0).uid;
-            if(message.sendingUid!=expected)return true;
+            // NPatch can return the embedded APK's archive ApplicationInfo (UID
+            // 0/-1), not the installed service identity. Resolve the Binder UID
+            // to installed packages instead; never trust a UID in the payload.
+            // The reply Messenger remains private to the explicit service bind.
+            String[] packages=message.sendingUid<0?null:activity.getPackageManager().getPackagesForUid(message.sendingUid);
+            if(packages==null||!Arrays.asList(packages).contains("io.oniimai.kanade")){
+                Log.w("OniimaiPhoneNfc","NFC result rejected: sender is not the installed module service");return true;
+            }
             deliver(data.getLong("token"),code,data.getInt("issue"));
         }catch(Exception error){Log.w("OniimaiPhoneNfc","NFC result unavailable");}
         finally{if(code!=null)Arrays.fill(code,(byte)0);}

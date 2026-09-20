@@ -1,0 +1,1 @@
+package io.oniimai.kanade; final class PhoneNfcService {static final int READ=1,CANCEL=2,RESULT=3;}

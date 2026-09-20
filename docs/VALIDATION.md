@@ -1,6 +1,6 @@
 # Validation
 
-Current **1.1.0-rc4 / KanadeDX 1.65** observations are recorded in [Compatibility 1.65](COMPATIBILITY-1.65.md). The following is the historical **1.0.0** validation record.
+Current **1.1.0-rc5 / KanadeDX 1.60 and 1.65** observations are recorded in [Compatibility 1.65](COMPATIBILITY-1.65.md). The following is the historical **1.0.0** validation record.
 
 **Version 1.0.0 · tested only with KanadeDX-260207.0635 (1.60).** Other game builds have not been tested.
 

@@ -1,0 +1,2 @@
+package io.oniimai.kanade; final class NativeBridge {static long generation;static int state,deliveries,errors;static byte[] last;
+ static long aimeGeneration(){return generation;} static int aimeStatus(){return state;} static boolean submitAime(byte[] code,long gen){deliveries++;last=code.clone();return true;} static void aimeError(int issue,long gen){errors++;} }

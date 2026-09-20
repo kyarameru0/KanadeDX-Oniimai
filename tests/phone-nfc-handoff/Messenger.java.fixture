@@ -1,0 +1,2 @@
+package android.os; public class Messenger { static class Binder implements IBinder {final Handler h;Binder(Handler x){h=x;}} final Binder b;
+ public Messenger(Handler h){b=new Binder(h);} public Messenger(IBinder x){b=(Binder)x;} public IBinder getBinder(){return b;} public void send(Message m)throws RemoteException{b.h.cb.handleMessage(m);} }

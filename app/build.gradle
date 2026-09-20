@@ -20,8 +20,8 @@ android {
         applicationId 'io.oniimai.kanade'
         minSdk 28
         targetSdk 35
-        versionCode 33
-        versionName '1.1.0-rc4'
+        versionCode 34
+        versionName '1.1.0-rc5'
         ndk { abiFilters 'arm64-v8a' }
     }
     buildFeatures { compose true; buildConfig true }

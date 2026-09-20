@@ -12,7 +12,7 @@ Supported formats are not proof of an authentic issuer card or account ownership
 
 ## LSPosed transport
 
-The original host lacks NFC permission. Its foreground Activity receives ReaderMode callbacks, then passes the Android Tag to the module's explicit bound service for permissioned tag I/O. Each Binder result is checked against the expected UID and pending token. System NFC service permission enforcement is not changed.
+The original host lacks NFC permission. Its foreground Activity receives ReaderMode callbacks, then passes the Android Tag to the module's explicit bound service for permissioned tag I/O. Each Binder result is checked against the installed packages belonging to its Binder-supplied sending UID and the pending token. The sender must be the installed `io.oniimai.kanade` service. System NFC service permission enforcement is not changed.
 
 Android package visibility is established through a grant to a zero-data provider. Updating/launching the module makes the grant; a first-connection `Theme.NoDisplay` registration Activity can perform it and immediately finish without creating a window. This is separate from reading and is not a scanner screen. The provider exposes no files or card/settings data.
 
@@ -20,7 +20,41 @@ A narrow hook catches SecurityException only in legacy Beam callback registratio
 
 ## Direct host transport
 
-If the host has NFC permission, `PhoneNfcReader` uses `PhoneTagReader` directly on a worker. This supports the separately tested NPatch packaging design without a companion scanner screen. Integrated APKs and instructions are excluded from this release; physical non-root testing is not claimed.
+If the host has NFC permission, `PhoneNfcReader` uses `PhoneTagReader` directly on a worker. Transport is selected by the host's actual NFC permission, not by game version or whether NPatch is present. An NPatch host without NFC permission uses the same bound service described above and requires the module APK to remain installed separately. Neither path opens a scanner screen. Integrated game APKs and packaging recipes are excluded from the repository.
+
+## NPatch result handoff correction (1.1.0-rc5)
+
+An embedded NPatch module can receive archive `ApplicationInfo` from
+`getApplicationInfo(modulePackage)`. Its UID may be 0 or -1 rather than the UID
+of the separately installed module service. Earlier module code compared that
+value to the Binder reply sender and silently discarded valid NFC results;
+the pending read then timed out.
+
+The receiver now uses `PackageManager.getPackagesForUid(message.sendingUid)`
+to verify the installed service package. It does not accept a UID/package
+claimed in the message payload, bypass system NFC permissions, or remove the
+private callback, token, deadline and game-generation checks. Unknown senders
+fail closed. Direct NFC reads are unchanged.
+
+If NPatch embeds a module APK, updating only the separately installed module
+does not replace the receiver inside the game. Use the updated module both as
+the installed companion and in the embedded module configuration, then fully
+restart the game. Keep the same app signing identity when updating to preserve
+data; this change requires no game-data reset.
+
+The regression test runs the production receiver with an archive UID of 0/-1
+and a different installed service UID. The old receiver fails this case; rc5
+passes 68 checks, including forged senders, stale tokens, cancellation,
+expiration, real read errors and clearing received card bytes.
+
+On the connected Xiaomi Android 16 phone, the existing NPatch 1.60 host was
+updated with only the embedded module replaced; its manifest, permissions,
+loader and game payloads stayed the same. The service path logged two successful
+phone-card deliveries, and the tester confirmed in-game recognition. This phone
+is rooted; a separate unrooted-device matrix and fresh 1.65 regression test were
+not performed for this correction.
+
+Reference: [Android PackageManager.getPackagesForUid](https://developer.android.com/reference/android/content/pm/PackageManager#getPackagesForUid(int)).
 
 ## Lifecycle
 

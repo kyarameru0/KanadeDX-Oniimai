@@ -1,0 +1,5 @@
+package android.os; public class Bundle {final java.util.Map<String,Object> data=new java.util.HashMap<>();
+ public void putLong(String k,long v){data.put(k,v);} public long getLong(String k){return data.containsKey(k)?(Long)data.get(k):0;}
+ public void putInt(String k,int v){data.put(k,v);} public int getInt(String k){return data.containsKey(k)?(Integer)data.get(k):0;}
+ public void putByteArray(String k,byte[] v){data.put(k,v);} public byte[] getByteArray(String k){return (byte[])data.get(k);} public void putParcelable(String k,Object v){data.put(k,v);}
+}

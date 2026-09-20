@@ -1,0 +1,1 @@
+package io.oniimai.kanade; final class PhoneTagReader {PhoneCardReader.Result read(android.nfc.Tag t){throw new AssertionError("bound-service fixture must not use direct I/O");} void close(){}}

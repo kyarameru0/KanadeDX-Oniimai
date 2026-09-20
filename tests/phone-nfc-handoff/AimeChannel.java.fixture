@@ -1,0 +1,1 @@
+package io.oniimai.kanade; final class AimeChannel {static final int READ_FAILED=3;}

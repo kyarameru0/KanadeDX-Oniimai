@@ -1,6 +1,6 @@
 # User guide
 
-Version 1.1.0-rc4 adds KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The published 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
+Version 1.1.0-rc5 adds KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The published 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
 
 ## First connection
 
@@ -38,7 +38,7 @@ The source action opens the project repository in a browser. If you do not have 
 | No module shortcut | API 102 support, scope, process restart, exact supported game build |
 | Command port selected as touch | Interface role/name, manual selection, hub changes |
 | No controller input | USB permission, IO4 HID mode, data-capable cable, close settings |
-| Only phone cards fail | System NFC, active game scan, antenna position, MIFARE Classic support |
+| Only phone cards fail | System NFC, active game scan, antenna position, MIFARE Classic support. For an embedded NPatch module, update the embedded receiver and installed module together; see [phone NFC handoff](PHONE_NFC.md#npatch-result-handoff-correction-110-rc5). |
 | A different card produces an error | Supported card format; never attach card numbers/dumps to issues |
 | No external screen | Separate-display detection, HDMI/DP adapter, power and cable |
 | Target build mismatch | Verify an authorized APK locally; never blindly change addresses |

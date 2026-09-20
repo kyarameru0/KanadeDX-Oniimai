@@ -1,0 +1,5 @@
+package android.content.pm; public class PackageManager {
+ public static final int PERMISSION_GRANTED=0; public int archiveUid,appInfoCalls; public boolean fail; public final java.util.Map<Integer,String[]> installed=new java.util.HashMap<>();
+ public ApplicationInfo getApplicationInfo(String p,int flags){appInfoCalls++;ApplicationInfo a=new ApplicationInfo();a.uid=archiveUid;return a;}
+ public String[] getPackagesForUid(int uid){if(fail)throw new SecurityException("fixture");return installed.get(uid);}
+}

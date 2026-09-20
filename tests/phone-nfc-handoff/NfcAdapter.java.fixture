@@ -1,0 +1,4 @@
+package android.nfc; public class NfcAdapter {public interface ReaderCallback {void onTagDiscovered(Tag t);} public static final String EXTRA_READER_PRESENCE_CHECK_DELAY="delay";
+ public static final int FLAG_READER_NFC_A=1,FLAG_READER_NFC_F=4,FLAG_READER_SKIP_NDEF_CHECK=128;
+ public static NfcAdapter getDefaultAdapter(android.app.Activity a){return new NfcAdapter();} public boolean isEnabled(){return true;}
+ public void enableReaderMode(android.app.Activity a,ReaderCallback c,int f,android.os.Bundle b){} public void disableReaderMode(android.app.Activity a){} }

@@ -1,0 +1,1 @@
+package io.oniimai.kanade; final class PhoneCardReader {static final class Result {byte[] code;int issue;}}

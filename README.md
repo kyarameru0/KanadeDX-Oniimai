@@ -8,7 +8,7 @@
   </picture>
   <h1>KanadeDX Oniimai</h1>
   <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX on Android.</p>
-  <p><strong>1.1.0-rc4 source</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
+  <p><strong>1.1.0-rc5 source</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
   <p><a href="#quick-start">Install</a> · <a href="docs/USER_GUIDE.md">Use</a> · <a href="docs/DEVELOPER_GUIDE.md">Understand the code</a> · <a href="docs/BUILD.md">Build</a> · <a href="docs/README.md">All documentation</a></p>
 </div>
 
@@ -57,7 +57,7 @@ You need an Android 9+ ARM64 device, an LSPosed environment supporting **modern 
 
 A local build uses your own signing key, so it may not install over the maintainer's APK. Back up settings before uninstalling an existing build. [Usage and troubleshooting](docs/USER_GUIDE.md)
 
-**NPatch:** compatibility paths remain in the source, but non-root testing is not verified for this release. Integrated APKs and patching instructions are not provided. [Scope](docs/LEGAL_REVIEW.md#npatch)
+**NPatch:** rc5 phone NFC handoff was confirmed in a patched 1.60 host on a rooted phone; independent non-root-device testing is not verified. See [phone NFC compatibility](docs/PHONE_NFC.md). Integrated APKs and patching instructions are not provided. [Scope](docs/LEGAL_REVIEW.md#npatch)
 
 <a id="architecture"></a>
 ## How it works
@@ -99,7 +99,7 @@ Most implementation code lives in `app/src/main/java/io/oniimai/kanade/` and `ap
 <a id="validation"></a>
 ## Validation
 
-The current 1.0.0 module passed **4,983 host checks**, APK notice readback, release compilation, signature and alignment checks. On Xiaomi Android 16, the launcher opened the GPL text and Android Back returned to the notice list. Earlier phone-NFC observations and the remaining device checks are listed separately in [Validation](docs/VALIDATION.md).
+The published 1.0.0 module passed **4,983 host checks**, APK notice readback, release compilation, signature and alignment checks. On Xiaomi Android 16, the launcher opened the GPL text and Android Back returned to the notice list. Earlier phone-NFC observations and the remaining device checks are listed separately in [Validation](docs/VALIDATION.md).
 
 <a id="license"></a>
 ## License and credits

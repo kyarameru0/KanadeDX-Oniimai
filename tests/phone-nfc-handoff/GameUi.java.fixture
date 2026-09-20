@@ -1,0 +1,1 @@
+package io.oniimai.kanade; final class GameUi {static String tr(String k,String z){return k;}}

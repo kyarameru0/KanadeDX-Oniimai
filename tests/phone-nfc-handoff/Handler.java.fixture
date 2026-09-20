@@ -1,0 +1,2 @@
+package android.os; public class Handler { public interface Callback {boolean handleMessage(Message m);} final Callback cb;
+ public Handler(Looper l){cb=null;} public Handler(Looper l,Callback c){cb=c;} public boolean post(Runnable r){r.run();return true;} public void removeCallbacksAndMessages(Object o){} }

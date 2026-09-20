@@ -1,0 +1,1 @@
+package android.content; public class Intent { public Intent setClassName(String p,String c){return this;} }

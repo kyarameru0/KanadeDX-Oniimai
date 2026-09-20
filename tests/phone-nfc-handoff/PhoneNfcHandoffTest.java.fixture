@@ -1,0 +1,75 @@
+package io.oniimai.kanade;
+
+import android.app.Activity;
+import android.nfc.Tag;
+import android.os.*;
+import java.util.Arrays;
+
+/** Exercises the real callback, including NPatch's archive UID mismatch. */
+public final class PhoneNfcHandoffTest {
+    private static int checks;
+    private static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);checks++;}
+    private static final int SERVICE_UID=10420,OTHER_UID=10421;
+    private static final byte[] SYNTHETIC={0x50,0x10,0x12,0x34,0x56,0x78,(byte)0x90,0x12,0x34,0x56};
+    private static final class Session implements AutoCloseable {
+        final Activity activity=new Activity();final PhoneNfcReader reader;final Messenger callback;final long pending;
+        Session(int archiveUid){
+            SystemClock.now=100;NativeBridge.generation=7;NativeBridge.state=1;
+            NativeBridge.deliveries=NativeBridge.errors=0;NativeBridge.last=null;
+            activity.pm.archiveUid=archiveUid;
+            activity.pm.installed.put(SERVICE_UID,new String[]{"io.oniimai.kanade"});
+            activity.pm.installed.put(OTHER_UID,new String[]{"app.KanadeDX"});
+            reader=new PhoneNfcReader(activity);reader.update(true,100);reader.onTagDiscovered(new Tag());
+            check(activity.lastRequest!=null&&activity.lastRequest.what==PhoneNfcService.READ,"tag starts a bound read");
+            callback=activity.lastRequest.replyTo;pending=activity.lastRequest.getData().getLong("token");
+        }
+        Message response(int uid,long token,int issue){
+            Message m=Message.obtain(null,PhoneNfcService.RESULT);m.sendingUid=uid;
+            m.getData().putLong("token",token);m.getData().putInt("issue",issue);
+            if(issue==0)m.getData().putByteArray("code",SYNTHETIC.clone());return m;
+        }
+        long token(){return pending;}
+        void send(Message m)throws Exception{
+            callback.send(m);
+            byte[] code=m.getData().getByteArray("code");
+            check(code==null||Arrays.equals(code,new byte[code.length]),"all received card bytes are cleared");
+        }
+        public void close(){reader.destroy();}
+    }
+    public static void main(String[] args)throws Exception{
+        for(int archiveUid:new int[]{0,-1,SERVICE_UID})try(Session s=new Session(archiveUid)){
+            long token=s.token();s.send(s.response(SERVICE_UID,token,0));
+            check(NativeBridge.deliveries==1&&Arrays.equals(NativeBridge.last,SYNTHETIC),"installed service accepted despite archive UID "+archiveUid);
+            check(s.activity.pm.appInfoCalls==0,"security check must not use archive ApplicationInfo");
+            s.send(s.response(SERVICE_UID,token,0));check(NativeBridge.deliveries==1,"duplicate ignored");
+        }
+        for(int uid:new int[]{-1,0,OTHER_UID,99999})try(Session s=new Session(0)){
+            Message spoof=s.response(uid,s.token(),0);spoof.getData().putInt("uid",SERVICE_UID);s.send(spoof);
+            check(NativeBridge.deliveries==0&&NativeBridge.errors==0,"foreign/unknown sender rejected without consuming pending read");
+            s.send(s.response(SERVICE_UID,s.token(),0));check(NativeBridge.deliveries==1,"real service can still complete");
+        }
+        try(Session s=new Session(0)){
+            s.activity.pm.installed.put(OTHER_UID,new String[]{"io.oniimai.kanade.clone"});
+            s.send(s.response(OTHER_UID,s.token(),0));check(NativeBridge.deliveries==0,"prefix lookalike rejected");
+            s.activity.pm.fail=true;s.send(s.response(SERVICE_UID,s.token(),0));check(NativeBridge.deliveries==0,"failed identity lookup fails closed");
+        }
+        try(Session s=new Session(0)){
+            s.send(s.response(SERVICE_UID,s.token()+1,0));check(NativeBridge.deliveries==0,"wrong token ignored");
+            s.send(s.response(SERVICE_UID,s.token(),0));check(NativeBridge.deliveries==1,"correct token remains usable");
+        }
+        try(Session s=new Session(0)){
+            s.send(s.response(SERVICE_UID,s.token(),3));check(NativeBridge.errors==1&&NativeBridge.deliveries==0,"real read failure reaches game");
+            s.send(s.response(SERVICE_UID,s.token(),3));check(NativeBridge.errors==1,"error not repeated");
+        }
+        for(int changed:new int[]{0,1,2,3,4})try(Session s=new Session(0)){
+            Message m=s.response(SERVICE_UID,s.token(),0);
+            if(changed==0)NativeBridge.generation++;
+            if(changed==1)NativeBridge.state=2;
+            if(changed==2)SystemClock.now=6100;
+            if(changed==3)s.reader.pause();
+            if(changed==4)s.reader.destroy();
+            s.send(m);check(NativeBridge.deliveries==0&&NativeBridge.errors==0,"obsolete result ignored: "+changed);
+        }
+        System.out.println("PASS: "+checks+" production phone NFC Binder handoff checks");
+    }
+}
