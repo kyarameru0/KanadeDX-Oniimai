@@ -29,6 +29,7 @@ public final class AimeReaderTest {
         System.arraycopy(data,0,body,6,data.length);return AimeProtocol.frame(body);
     }
     public static void main(String[] args)throws Exception{
+        testEmptyFieldCadence();
         testRfCommandRecovery();
         AtomicInteger opens=new AtomicInteger(),accepted=new AtomicInteger(),ready=new AtomicInteger(0),reads=new AtomicInteger(),detects=new AtomicInteger(),radio=new AtomicInteger(),color=new AtomicInteger(-1),nativeColor=new AtomicInteger(-1);
         AtomicBoolean present=new AtomicBoolean(),silent=new AtomicBoolean();AtomicReference<UsbIo.Cdc> handle=new AtomicReference<>();
@@ -56,6 +57,9 @@ public final class AimeReaderTest {
             check(accepted.get()==1&&reads.get()==2&&detects.get()==1&&radio.get()==0,"successful card stops RF with no repeated detect/authenticate");
             check(color.get()==0x0000ff,"successful physical read lights reader blue without ACK");
             check(!reader.diagnostic().contains("0123456789"),"diagnostic excludes card code");
+            String failureReport=reader.failureDiagnostic();
+            check(failureReport.contains("cmd=")&&!failureReport.contains("0123456789")&&!failureReport.contains("[1, 2, 3, 4]"),"failure history retains command metadata without card number or UID");
+            check(failureReport.split("\n").length<=25,"failure snapshot retains at most 24 command events");
             reader.foreground(false);await(()->color.get()==0&&reader.summary().contains("백그라운드"),"background stops RF and turns reader LED off");
             check(!handle.get().closed&&radio.get()==0,"background preserves CDC without DTR toggle");
             int count=opens.get();Thread.sleep(700);check(opens.get()==count,"background opens no new handle");
@@ -71,6 +75,7 @@ public final class AimeReaderTest {
             ready.set(1);
             silent.set(true);await(()->reader.summary().contains("재연결"),"USB read failure schedules independent retry");
             check(reader.running()&&handle.get().closed,"failure closes only NFC handle while session stays enabled");
+            check(reader.failureDiagnostic().contains("\n+")&&!reader.failureDiagnostic().contains("0123456789"),"closed reader retains safe command history after transport cleanup");
             UsbIo.replacement=new UsbIo.Port();
             silent.set(false);await(()->!handle.get().closed&&(reader.summary().contains("카드를 리더")||reader.summary().contains("자동 재시도")),"reconnect succeeds without settings panel; only failed card requests require RF cooldown");
             check(handle.get().selected==UsbIo.replacement,"stable identity resolves replacement USB address");
@@ -139,7 +144,12 @@ public final class AimeReaderTest {
             }
             int empties=emptyReports.get();mode.set(0);await(()->emptyReports.get()>empties,"empty report rearms error feedback before USB reset test");
             holdDetect.set(true);await(()->heldRequests.get()==1&&reader.diagnostic().contains("cmd=42 status=-1"),"DETECT is outstanding before physical detach simulation");
-            UsbIo.Cdc old=handle.get();int previousErrors=errors.get();reader.detached();
+            UsbIo.Cdc old=handle.get();int previousErrors=errors.get();
+            AtomicBoolean observedStall=new AtomicBoolean();
+            await(()->{if(reader.takeDetectStall())observedStall.set(true);return observedStall.get();},"slow DETECT is observable before the 10-second timeout");
+            check(!reader.takeDetectStall(),"one early snapshot per outstanding DETECT");
+            check(!old.closed&&heldRequests.get()==1&&errors.get()==previousErrors,"early snapshot does not close USB, retry DETECT or invent a game error");
+            reader.detached();
             await(()->old.closed&&errors.get()==previousErrors+1,"physical detach cancels pending worker and sends one game error");
             check(lastError.get()==AimeChannel.TRANSPORT_ERROR,"USB restart during detection is a transport error, never an invented card");
             check(reportedGeneration.get()==scanGeneration.get(),"transport feedback carries the game scan generation that authorized the request");
@@ -257,5 +267,18 @@ public final class AimeReaderTest {
             await(()->held.get()==beforeRestart+1,"explicit OFF/ON resets RF cooldown without waiting or a retry button");
             check(accepted.get()==1,"cooldown and transport recovery never fabricate card submissions");
         }finally{reader.destroy();UsbIo.Cdc.opened=null;UsbIo.replacement=null;}
+    }
+    static void testEmptyFieldCadence(){
+        AimeReader.EmptyFieldCadence cadence=new AimeReader.EmptyFieldCadence();long now=1000;
+        check(cadence.due(now),"initial scan is immediately eligible");
+        for(int i=0;i<12;i++){
+            cadence.completed(false,now);int gap=i<7?250:1000;
+            check(cadence.gapMillis()==gap,"empty-field delay is capped after eight misses");
+            check(!cadence.due(now+gap-1)&&cadence.due(now+gap),"no early retry and no permanent idle disable");
+            now+=gap+550;
+        }
+        cadence.completed(true,now);check(cadence.gapMillis()==250&&cadence.due(now+250),"physical presence restores fast removal tracking");
+        for(int i=0;i<8;i++)cadence.completed(false,now);
+        cadence.reset();check(cadence.gapMillis()==250&&cadence.due(now),"leaving scan resets the delay for the next entry");
     }
 }

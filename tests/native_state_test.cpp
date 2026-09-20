@@ -290,9 +290,18 @@ extern "C" EXPORT int run_tests(){
     CHECK(cabinet.colors[8]==0x808080);CHECK(cabinet.colors[9]==0x404040);CHECK(cabinet.colors[10]==0x808080);
     CHECK(cabinet.colors[0]==0xff0000);CHECK(cabinet.colors[11]==0x00ff00);
     cabinet.sample(2000);CHECK(cabinet.colors[8]==0xffffff);CHECK(cabinet.colors[9]==0x808080);CHECK(cabinet.colors[10]==0);
-    cabinet.allOff();cabinet.sample(2100);for(int i=0;i<11;i++)CHECK(cabinet.colors[i]==0);
-    CHECK(cabinet.colors[11]==0x00ff00); // BD15070 all-off never fabricates a JVS billboard command.
-    static LedState noCeiling;noCeiling.allFet(0xffffffff);noCeiling.allOff();CHECK((noCeiling.seen&(1u<<11))==0);
+    cabinet.buttonsOff();cabinet.sample(2100);for(int i=0;i<8;i++)CHECK(cabinet.colors[i]==0);
+    CHECK(cabinet.colors[8]==0xffffff);CHECK(cabinet.colors[9]==0x808080);CHECK(cabinet.colors[10]==0);
+    CHECK(cabinet.colors[11]==0x00ff00);
+    // Replay a scene's button reset in the middle of the independent cabinet
+    // fade. The ring keeps its timing and still obeys a later explicit FET OFF.
+    cabinet.fade(fetFade,1,true,3000);cabinet.sample(3250);CHECK(cabinet.colors[9]==0x202020);
+    cabinet.buttonsOff();cabinet.sample(3750);
+    CHECK(cabinet.colors[8]==0xbfbfbf);CHECK(cabinet.colors[9]==0x606060);CHECK(cabinet.colors[10]==0x404040);
+    cabinet.allFet(0);cabinet.sample(4000);for(int i=8;i<11;i++)CHECK(cabinet.colors[i]==0);
+    static LedState noCeiling;noCeiling.allFet(0xffffffff);noCeiling.buttonsOff();noCeiling.sample(0);
+    CHECK(noCeiling.colors[9]==0xffffff);CHECK((noCeiling.seen&(1u<<11))==0);
+    static LedState onlyButtons;onlyButtons.buttonsOff();CHECK(onlyButtons.seen==255);
     uint32_t branch=0;
     CHECK(Arm64StubBranch::encode(0x10000000,0x10000004,branch));CHECK(branch==0x14000001);
     CHECK(Arm64StubBranch::encode(0x10000000,0x0ffffffc,branch));CHECK(branch==0x17ffffff);

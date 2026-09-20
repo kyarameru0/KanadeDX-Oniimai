@@ -62,7 +62,7 @@ static void ledAllHook(void* self,LedColor color,int speed,const void* method){
     originalLedAll(self,color,speed,method);
 }
 static void ledOffHook(void* self,const void* method){
-    if(firstPlayer(self)){pthread_mutex_lock(&ledLock);leds.allOff();pthread_mutex_unlock(&ledLock);}
+    if(firstPlayer(self)){pthread_mutex_lock(&ledLock);leds.buttonsOff();pthread_mutex_unlock(&ledLock);}
     originalLedOff(self,method);
 }
 static void captureFade(void* self,void* list,bool ring){

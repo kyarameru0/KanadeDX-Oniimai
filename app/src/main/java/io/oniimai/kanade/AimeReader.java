@@ -24,6 +24,8 @@ final class AimeReader {
     private final AtomicInteger generation=new AtomicInteger();
     private final AtomicInteger radioGeneration=new AtomicInteger();
     private final AimePresence presence=new AimePresence();
+    private final EmptyFieldCadence cadence=new EmptyFieldCadence();
+    private AimeChannel reportedStallChannel;private long reportedStall;
     private volatile boolean running,destroyed,foreground=true,ledEnabled=true,scanBlocked;
     private volatile int state,game,failures,issue;
     private volatile int radioType=3;
@@ -31,6 +33,7 @@ final class AimeReader {
     private UsbIo.Port selected;
     private volatile AimeChannel channel;
     private volatile String lastTransport="";
+    private volatile String lastTrace="";
     private volatile String transportStep="idle";
     private long stableSince,successUntil,lastGameGeneration=-1;private boolean errorReported;
     private volatile long requestGameGeneration=-1,blockedGameGeneration=-1;
@@ -65,7 +68,35 @@ final class AimeReader {
         if(game==2)return tr("카드 전달됨 · 게임에서 처리 중","卡片已提交 · 游戏正在处理");
         return tr("리더 연결됨 · 게임 카드 인식 화면 대기","读卡器已连接 · 等待游戏读卡画面");
     }
-    String diagnostic(){AimeChannel current=channel;return summary()+" / Accepted: "+accepted+" / Game: "+game+" / State: "+state+" / Issue: "+issue+" / "+(current==null?lastTransport:current.diagnostic());}
+    String diagnostic(){AimeChannel current=channel;return summary()+" / Accepted: "+accepted+" / Game: "+game+" / State: "+state+" / Issue: "+issue+" / Idle gap: "+cadence.gapMillis()+"ms / "+(current==null?lastTransport:current.diagnostic());}
+    /** Called only by the UI tick: no USB operation, wait or channel monitor. */
+    boolean takeDetectStall(){
+        AimeChannel current=channel;if(current==null)return false;
+        long started=current.stalledDetect();
+        if(started==0||(current==reportedStallChannel&&started==reportedStall))return false;
+        reportedStallChannel=current;reportedStall=started;return true;
+    }
+    /** A mitigation for sustained empty-field traffic, not a firmware-reset fix.
+     * Keep automatic reading, but leave RF off longer after eight empty replies.
+     * Game scan-generation churn alone must not restart the fast polling burst.
+     */
+    static final class EmptyFieldCadence {
+        private volatile int empty;
+        private long next;
+        int gapMillis(){return empty>=8?1000:250;}
+        boolean due(long now){return now>=next;}
+        void completed(boolean present,long now){empty=present?0:Math.min(8,empty+1);next=now+gapMillis();}
+        void reset(){empty=0;next=0;}
+    }
+    /** Copy bounded command metadata before detach cleanup; never includes card bytes. */
+    String failureDiagnostic(){
+        AimeChannel current=channel;return diagnostic()+(current==null?lastTrace:commandTrace(current));
+    }
+    private static String commandTrace(AimeChannel current){
+        StringBuilder report=new StringBuilder();String[] events=current.trace();
+        for(int i=Math.max(0,events.length-24);i<events.length;i++)report.append('\n').append(events[i]);
+        return report.toString();
+    }
     void foreground(boolean value){foreground=value;}
     void led(boolean enabled){ledEnabled=enabled;}
     void radioType(int type){
@@ -89,7 +120,7 @@ final class AimeReader {
             transportStep="open";state=1;channel=new AimeChannel(new UsbIo.Cdc(usb,restored,115200,1));
             transportStep="initialize";channel.setRadioType(radioType);channel.initialize(false);
             if(gen!=generation.get()||destroyed){closeCurrent();return;}
-            state=scanBlocked?6:2;stableSince=SystemClock.uptimeMillis();
+            state=scanBlocked?6:2;stableSince=SystemClock.uptimeMillis();cadence.reset();
             Log.i("OniimaiNfc","NFC connected; "+channel.diagnostic());
             pump=io.scheduleWithFixedDelay(()->poll(gen),0,250,TimeUnit.MILLISECONDS);
         }catch(Exception error){fail(gen,error);}
@@ -111,6 +142,7 @@ final class AimeReader {
             // RF requests compete for controller MCU time. Outside an authorized game
             // scan, leave the CDC handle alive and quiet instead of toggling DTR/RTS.
             if(scanBlocked||game!=1||!foreground){
+                cadence.reset();
                 channel.setScanning(false);
                 updateLed(now);state=foreground?(scanBlocked?6:2):5;
                 if(now-stableSince>10000)failures=0;
@@ -119,10 +151,12 @@ final class AimeReader {
             // Only a genuine new game scan rearms a card removed while RF was off.
             // A USB reconnect, focus change or settings panel does not create a scan.
             if(scanGeneration>=0&&scanGeneration!=lastGameGeneration){presence.clear();errorReported=false;lastGameGeneration=scanGeneration;}
+            updateLed(now);
+            if(!cadence.due(now))return; // The preceding poll already stopped RF.
             requestGameGeneration=scanGeneration;
             channel.setScanning(true);
-            updateLed(now);
             AimeChannel.PollResult card=channel.poll();
+            cadence.completed(card.present,SystemClock.uptimeMillis());
             if(gen!=generation.get()||destroyed||!foreground||scanRadioGeneration!=radioGeneration.get())return;
             if(scanGeneration>=0&&scanGeneration!=gameGeneration.getAsLong())return;
             if(card.accessCode!=null)resetRfRecovery();
@@ -151,7 +185,7 @@ final class AimeReader {
     }
     private void fail(int gen,Exception error){
         AimeChannel current=channel;if(current!=null){
-            lastTransport=current.diagnostic();
+            lastTransport=current.diagnostic();lastTrace=commandTrace(current);
             // Capture the events BEFORE the last command, not just the command
             // that happened to time out. The allowlist excludes card contents.
             for(String event:current.trace())Log.w("OniimaiNfcTrace",event);
@@ -187,6 +221,9 @@ final class AimeReader {
         if(destroyed||!running)return;
         int gen=generation.get();
         AimeChannel current=channel;
+        // The pending request can fail before Android broadcasts detach. Its
+        // worker already owns recovery; do not count that same failure twice.
+        if(current==null)return;
         // An actual USB removal during an unanswered DETECT must not repeatedly
         // restart RF on the same held card in the failed game scan. A genuinely
         // new game scan can try again after transport recovery.

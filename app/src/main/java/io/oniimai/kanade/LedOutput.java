@@ -18,6 +18,8 @@ final class LedOutput {
     private volatile java.util.function.Supplier<String> message=()->UiText.t("LED 연결 대기");
     private volatile long sent,events;
     private volatile int seen,nativeStatus;
+    private volatile int bodyLevel,ringLevel,sideLevel;
+    private volatile long cabinetFrames;
     private volatile int brightness=100,rotation,testColor=-1;
     private volatile long testUntil;
     private volatile boolean reverse,ring;
@@ -33,7 +35,9 @@ final class LedOutput {
     LedOutput(UsbManager usb,boolean loaded){this.usb=usb;nativeLoaded=loaded;}
     boolean running(){return running;}
     String summary(){return message.get()+UiText.t("\n게임 LED ")+(nativeStatus==255?UiText.t("준비 8/8"):UiText.t("상태 ")+nativeStatus)+UiText.t(" · 버튼 신호 ")+Integer.bitCount(seen&255)+UiText.t("/8 · 송신 ")+sent;}
-    String diagnostic(){return summary()+" / Events: "+events+" / Cabinet seen: "+((seen>>>8)&7);}
+    String diagnostic(){return summary()+" / Events: "+events+" / Cabinet seen: "+((seen>>>8)&7)+" / FET body/ring/side: "+bodyLevel+"/"+ringLevel+"/"+sideLevel+" / FET frames: "+cabinetFrames;}
+    /** Fixed fields only: a persistent failure report must not retain exception messages. */
+    String failureDiagnostic(){return "LED running="+running+" native="+nativeStatus+" seen="+seen+" events="+events+" sent="+sent+" FET="+bodyLevel+"/"+ringLevel+"/"+sideLevel+" frames="+cabinetFrames;}
     void settings(int brightness,int rotation,boolean reverse,boolean ring){
         this.brightness=Math.max(0,Math.min(100,brightness));this.rotation=rotation;this.reverse=reverse;this.ring=ring;
     }
@@ -45,7 +49,7 @@ final class LedOutput {
         int gen=generation.incrementAndGet();running=true;sent=0;message=()->UiText.t("LED 보드 확인 중…");
         io.execute(()->{
             closeCurrent();if(gen!=generation.get()||destroyed)return;
-            selectedPort=port;selectedAddress=address;this.base=base;failures=0;
+            selectedPort=port;selectedAddress=address;this.base=base;failures=0;cabinetFrames=0;
             open(gen);
         });
     }
@@ -88,14 +92,19 @@ final class LedOutput {
         boolean changed=false;
         for(int i=0;i<8;i++)if(last==null||last[i]!=frame[i]){channel.request(0x31,LedFrames.color(base+i,frame[i]));changed=true;}
         if(changed){channel.request(0x3c);sent++;}
-        if(useRing&&(last==null||!lastRing||last[8]!=frame[8]||last[9]!=frame[9]||last[10]!=frame[10]))channel.request(0x39,new byte[]{(byte)frame[8],(byte)frame[9],(byte)frame[10]});
-        else if(!useRing&&lastRing)channel.request(0x39,new byte[3]);
+        if(useRing&&(last==null||!lastRing||last[8]!=frame[8]||last[9]!=frame[9]||last[10]!=frame[10]))sendCabinet(frame[8],frame[9],frame[10]);
+        else if(!useRing&&lastRing)sendCabinet(0,0,0);
         last=frame;lastRing=useRing;
+    }
+    private void sendCabinet(int body,int ring,int side)throws IOException{
+        channel.request(0x39,new byte[]{(byte)body,(byte)ring,(byte)side});
+        bodyLevel=body;ringLevel=ring;sideLevel=side;
+        if(cabinetFrames++<4)android.util.Log.i("OniimaiKanade","LED FET acknowledged body/ring/side="+body+"/"+ring+"/"+side);
     }
     private void blackout()throws IOException{
         if(channel==null||channel.isClosed())return;
         for(int i=0;i<8;i++)channel.request(0x31,LedFrames.color(base+i,0));
-        channel.request(0x3c);if(lastRing)channel.request(0x39,new byte[3]);last=null;lastRing=false;
+        channel.request(0x3c);if(lastRing)sendCabinet(0,0,0);last=null;lastRing=false;
     }
     private void closeCurrent(){closeCurrent(true);}
     private void closeCurrent(boolean clear){

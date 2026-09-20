@@ -252,6 +252,11 @@ final class AimeChannel implements AutoCloseable {
     boolean isClosed(){return closed.get();}
     String[] trace(){return trace.snapshot();}
     boolean detectPending(){CompletableFuture<AimeProtocol.Reply> current=pending;return !closed.get()&&expectedAddress==AimeProtocol.ADDRESS&&expectedCommand==AimeProtocol.DETECT&&current!=null&&!current.isDone();}
+    /** Metadata-only early observation; never cancels or sends a second command. */
+    long stalledDetect(){
+        long started=lastStartedNanos;
+        return detectPending()&&lastStatus==-1&&started!=0&&System.nanoTime()-started>=TimeUnit.MILLISECONDS.toNanos(1500)?started:0;
+    }
     boolean cardRequestFailed(){
         // START/STOP are part of a card transaction too. In rc3 a lost START
         // reply escaped RF cooldown and game error feedback. An initialization

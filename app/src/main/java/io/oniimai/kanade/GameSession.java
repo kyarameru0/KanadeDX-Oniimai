@@ -216,6 +216,7 @@ final class GameSession implements DashboardHost {
     }
     private final Runnable tick=new Runnable(){public void run(){
         if(destroyed)return;push();long now=SystemClock.uptimeMillis();updateAutomaticInput(now);
+        if(aimeReader.takeDetectStall())saveUsbFailure("usb_last_nfc_stall","nfc_detect_slow");
         boolean inputsReady=connected||(touchPort.isEmpty()&&(buttonMode!=2||hidPort.isEmpty()));
         // NFC owns its own USB transport. An IO4/touch reconnect must not erase
         // the reader's pending error before Unity can consume it.
@@ -488,11 +489,26 @@ final class GameSession implements DashboardHost {
         }
     }
     private void copyDiagnostics(){
-        String report="Oniimai Kanade 0.3.7 / API 102\nAndroid "+Build.VERSION.RELEASE+" / "+Build.MANUFACTURER+" "+Build.MODEL+
+        String report="Oniimai Kanade "+BuildConfig.VERSION_NAME+" / API 102\nAndroid "+Build.VERSION.RELEASE+" / "+Build.MANUFACTURER+" "+Build.MODEL+
             "\nController firmware INFO: "+(firmwareInfo==null?"not queried":firmwareInfo.summary())+(firmwareQueryError.isEmpty()?"":" / query failed: "+firmwareQueryError)+
             "\n"+nativeExplanation()+"\nFrames: "+lastStatsFrame+" / Touch reads: "+lastStatsTouch+"\nUSB: "+connected+" / Packets: "+packets+" / HID: "+hidPackets+
-            "\n"+(commandMode?"Command: ":"Touch: ")+portName(touchPort)+"\nHID: "+portName(hidPort)+"\nKeys: "+Arrays.toString(keys.map)+"\nLED: "+portName(ledPort)+" / node="+ledAddress+" / base="+ledBase+" / rotation="+ledRotation+" / reverse="+ledReverse+" / brightness="+ledBrightness+" / ring="+ledRing+"\n"+ledOutput.diagnostic()+"\nCeiling: "+ceilingOutput.diagnostic()+"\nNFC: "+portName(aimePort)+" / "+aimeReader.diagnostic()+"\n"+displayOutput.diagnostic()+"\nStats: "+gameFrame+"\n"+message;
+            "\n"+(commandMode?"Command: ":"Touch: ")+portName(touchPort)+"\nHID: "+portName(hidPort)+"\nKeys: "+Arrays.toString(keys.map)+"\nLED: "+portName(ledPort)+" / node="+ledAddress+" / base="+ledBase+" / rotation="+ledRotation+" / reverse="+ledReverse+" / brightness="+ledBrightness+" / ring="+ledRing+"\n"+ledOutput.diagnostic()+"\nCeiling: "+ceilingOutput.diagnostic()+"\nNFC: "+portName(aimePort)+" / "+aimeReader.diagnostic()+"\n"+displayOutput.diagnostic()+"\nStats: "+gameFrame+"\n"+message+
+            "\nLast slow NFC request:\n"+prefs.getString("usb_last_nfc_stall","none")+"\nLast USB device detach:\n"+prefs.getString("usb_last_detach","none")+"\nLast input transport failure:\n"+prefs.getString("usb_last_input_failure","none");
         ((ClipboardManager)activity.getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("Oniimai diagnosis",report));tell(UiText.t("진단 정보를 복사했습니다."));
+    }
+    /** Failure-only local snapshots survive logcat rotation and a game restart.
+     * No card payload/number, device serial, or arbitrary exception text is saved.
+     */
+    private void saveUsbFailure(String key,String event){
+        long now=SystemClock.uptimeMillis(),touchAge,hidAge;
+        synchronized(dataLock){touchAge=touchAt==0?-1:Math.max(0,now-touchAt);hidAge=hidAt==0?-1:Math.max(0,now-hidAt);}
+        String report="module="+BuildConfig.VERSION_NAME+" event="+event+" utcMillis="+System.currentTimeMillis()+" uptimeMs="+now+
+            " inputGeneration="+generation.get()+" connected="+connected+" foreground="+foreground+"\nTouch packets="+packets+" ageMs="+touchAge+
+            " / HID packets="+hidPackets+" ageMs="+hidAge+"\n"+ledOutput.failureDiagnostic()+"\n"+ceilingOutput.diagnostic()+"\n"+aimeReader.failureDiagnostic();
+        // Only three fixed keys are used. Do not perform synchronous disk I/O or USB queries here.
+        report=report.substring(0,Math.min(report.length(),8192));
+        prefs.edit().putString(key,report).apply();
+        android.util.Log.w("OniimaiUsb",report);
     }
     private String firmwareDescription(){
         if(firmwareBusy)return tr("버전과 빌드를 읽는 중…","正在读取版本和构建信息…");
@@ -551,7 +567,7 @@ final class GameSession implements DashboardHost {
                 if(temporary!=null)temporary.close(); // Never close the shared input channel.
                 // A request timeout closes CommandChannel without its reader callback.
                 // Recover input only when this query used that actual shared handle.
-                if(shared!=null&&shared.isClosed())usbError(gen,tr("펌웨어 조회 중 입력 포트 연결이 끊겼습니다.","读取固件时输入端口已断开。"));
+                if(shared!=null&&shared.isClosed())usbError(gen,"firmware_query",tr("펌웨어 조회 중 입력 포트 연결이 끊겼습니다.","读取固件时输入端口已断开。"));
                 final FirmwareInfo info=result;final String error=failure;
                 ui.post(()->{
                     firmwareBusy=false;
@@ -635,6 +651,7 @@ final class GameSession implements DashboardHost {
         else if(UsbManager.ACTION_USB_DEVICE_DETACHED.equals(intent.getAction())){
             UsbDevice removed=intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
             if(removed==null)return;
+            if(portOnDevice(touchPort,removed)||portOnDevice(hidPort,removed)||portOnDevice(ledPort,removed)||portOnDevice(aimePort,removed))saveUsbFailure("usb_last_detach","android_device_detached");
             if(portOnDevice(aimePort,removed))aimeReader.detached();
             boolean inputs=portOnDevice(touchPort,removed)||portOnDevice(hidPort,removed);
             if(!inputs)return;
@@ -655,16 +672,16 @@ final class GameSession implements DashboardHost {
             try{
                 if(t!=null){
                     if(useCommand){
-                        command=new CommandChannel(new UsbIo.Cdc(usb,t,115200),(data,n)->{if(gen!=generation.get())return;try{touch(new Protocol.TouchDebug(data).pressed);}catch(Exception e){postMessage(UiText.t("터치 프레임 오류: ")+e.getMessage());}},this::postMessage,error->usbError(gen,error));
+                        command=new CommandChannel(new UsbIo.Cdc(usb,t,115200),(data,n)->{if(gen!=generation.get())return;try{touch(new Protocol.TouchDebug(data).pressed);}catch(Exception e){postMessage(UiText.t("터치 프레임 오류: ")+e.getMessage());}},this::postMessage,error->usbError(gen,"command",error));
                         FirmwareInfo info=parseFirmwareInfo(command.request(Protocol.INFO));
                         ui.post(()->{if(!destroyed&&gen==generation.get()){firmwareInfo=info;firmwareQueryError="";refreshFirmwareInfo();android.util.Log.i("OniimaiKanade","Controller firmware INFO: "+info.summary());}});
                         new Protocol.Config(command.request(Protocol.CONFIG_GET));command.request(Protocol.DEBUG_START);
                     }else{
                         serial=new UsbIo.Cdc(usb,t,9600);Protocol.TouchParser parser=new Protocol.TouchParser(pressed->{if(gen==generation.get())touch(pressed);});
-                        serial.start(parser::feed,error->usbError(gen,error));serial.write("{HALT}{RSET}{STAT}".getBytes(StandardCharsets.US_ASCII));
+                        serial.start(parser::feed,error->usbError(gen,"touch",error));serial.write("{HALT}{RSET}{STAT}".getBytes(StandardCharsets.US_ASCII));
                     }
                 }
-                if(h!=null)hid=new UsbIo.Hid(usb,h,(data,n)->{if(gen==generation.get()&&buttonMode==2)try{buttons(Io4Input.mask(data,bank));}catch(Exception e){postMessage(UiText.t("IO4 형식 불일치: ")+n+" bytes");}},error->usbError(gen,error));
+                if(h!=null)hid=new UsbIo.Hid(usb,h,(data,n)->{if(gen==generation.get()&&buttonMode==2)try{buttons(Io4Input.mask(data,bank));}catch(Exception e){postMessage(UiText.t("IO4 형식 불일치: ")+n+" bytes");}},error->usbError(gen,"hid",error));
                 if(gen!=generation.get())throw new IOException(UiText.t("연결이 취소되었습니다."));
                 connected=true;postMessage(UiText.t("연결 완료. 센서 상태를 확인한 뒤 입력을 켜세요."));
                 ui.post(()->{if(!destroyed&&gen==generation.get()){if(ledEnabled&&!ledOutput.running())startLeds();if(aimeEnabled)startAime();}});
@@ -672,7 +689,8 @@ final class GameSession implements DashboardHost {
             finally{busy=false;}
         });
     }
-    private void usbError(int sourceGeneration,String error){ui.post(()->{if(!destroyed&&sourceGeneration==generation.get()){
+    private void usbError(int sourceGeneration,String source,String error){ui.post(()->{if(!destroyed&&sourceGeneration==generation.get()){
+        saveUsbFailure("usb_last_input_failure",source);
         android.util.Log.w("OniimaiKanade","Current controller input transport failed; reconnecting");
         disconnect(false);message=UiText.t("USB 오류: ")+error;
     }});}

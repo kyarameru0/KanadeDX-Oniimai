@@ -57,7 +57,9 @@ struct LedState {
     static uint32_t rgb(LedColor color){return LedTrack::rgb(color);}
     void set(int index,LedColor color){if(index<0||index>=COUNT)return;tracks[index].set(color);seen|=1u<<index;events++;}
     void all(LedColor color){for(int i=0;i<8;i++)set(i,color);}
-    void allOff(){for(int i=0;i<BOARD_COUNT;i++)set(i,{0,0,0,1});}
+    // KanadeDX's SetLedAllOff clears its eight ButtonLeds only. White cabinet
+    // lamps have separate FET commands/fades; a button reset must preserve them.
+    void buttonsOff(){for(int i=0;i<8;i++)set(i,{0,0,0,1});}
     // Color32 R/G/B carries three independent white PWM channels, not RGB.
     void allFet(uint32_t rgba){for(int i=0;i<3;i++)set(8+i,LedTrack::unpack(rgba,true,i));}
     void setFet(int index,uint8_t value){if(index<0||index>=BOARD_COUNT)return;float v=value/255.f;set(index,{v,v,v,1});}
