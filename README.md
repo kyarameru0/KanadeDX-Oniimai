@@ -8,7 +8,7 @@
   </picture>
   <h1>KanadeDX Oniimai</h1>
   <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX on Android.</p>
-  <p><strong>1.1.0-rc3 source</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
+  <p><strong>1.1.0-rc4 source</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
   <p><a href="#quick-start">Install</a> · <a href="docs/USER_GUIDE.md">Use</a> · <a href="docs/DEVELOPER_GUIDE.md">Understand the code</a> · <a href="docs/BUILD.md">Build</a> · <a href="docs/README.md">All documentation</a></p>
 </div>
 

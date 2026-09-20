@@ -38,6 +38,7 @@ final class AimeReader {
     private long stableSince,successUntil,lastGameGeneration=-1;private boolean errorReported;
     private volatile long requestGameGeneration=-1,blockedGameGeneration=-1;
     private volatile long rfRetryAfter;private int rfFailures;
+    private boolean waitForNewGameScan;
     private ScheduledFuture<?> pump,retry;
     // State values contain no card identifiers: 0 off,1 opening,2 ready,3 unsupported,4 retry,5 background,6 scan blocked.
     AimeReader(UsbManager usb,IntSupplier gameStatus,Predicate<byte[]> submit){this(usb,gameStatus,()->-1,submit);}
@@ -86,6 +87,7 @@ final class AimeReader {
         int gapMillis(){return empty>=8?1000:250;}
         boolean due(long now){return now>=next;}
         void completed(boolean present,long now){empty=present?0:Math.min(8,empty+1);next=now+gapMillis();}
+        void uncertain(long now){next=now+1000;}
         void reset(){empty=0;next=0;}
     }
     /** Copy bounded command metadata before detach cleanup; never includes card bytes. */
@@ -136,7 +138,7 @@ final class AimeReader {
             long scanGeneration=gameGeneration.getAsLong();
             // The game can open a new scan automatically after an error, so a
             // generation change alone must not bypass the RF-only cooldown.
-            if(scanBlocked&&rfClock.getAsLong()>=rfRetryAfter&&foreground&&game==1&&blockedGameGeneration>=0&&scanGeneration>=0&&scanGeneration!=blockedGameGeneration){
+            if(scanBlocked&&rfClock.getAsLong()>=rfRetryAfter&&foreground&&game==1&&(!waitForNewGameScan||(blockedGameGeneration>=0&&scanGeneration>=0&&scanGeneration!=blockedGameGeneration))){
                 scanBlocked=false;blockedGameGeneration=-1;issue=AimeChannel.NONE;state=2;
             }
             // RF requests compete for controller MCU time. Outside an authorized game
@@ -156,6 +158,11 @@ final class AimeReader {
             requestGameGeneration=scanGeneration;
             channel.setScanning(true);
             AimeChannel.PollResult card=channel.poll();
+            if(!card.presenceKnown){
+                // DETECT rejected/failed without identifying a card: do not
+                // launch entry, clear a held-card latch or invent card removal.
+                cadence.uncertain(SystemClock.uptimeMillis());issue=card.issue;state=2;return;
+            }
             cadence.completed(card.present,SystemClock.uptimeMillis());
             if(gen!=generation.get()||destroyed||!foreground||scanRadioGeneration!=radioGeneration.get())return;
             if(scanGeneration>=0&&scanGeneration!=gameGeneration.getAsLong())return;
@@ -191,21 +198,24 @@ final class AimeReader {
             for(String event:current.trace())Log.w("OniimaiNfcTrace",event);
         }
         boolean readFailed=current!=null&&current.cardRequestFailed();
+        boolean cardSeen=readFailed&&current.cardObserved();
         closeCurrent();
         if(gen!=generation.get()||destroyed)return;
         if(readFailed){
             issue=AimeChannel.TRANSPORT_ERROR;
             blockedGameGeneration=requestGameGeneration;scanBlocked=true;
+            waitForNewGameScan=cardSeen;
             rfFailures=Math.min(rfFailures+1,3);
             rfRetryAfter=rfClock.getAsLong()+(15000L<<(rfFailures-1));
-            notifyGameError(AimeChannel.TRANSPORT_ERROR);
+            if(cardSeen)notifyGameError(AimeChannel.TRANSPORT_ERROR);
+            else Log.w("OniimaiNfc","NFC transport failed without card evidence; game entry unchanged");
         }
         state=4;int seconds=1<<Math.min(failures++,3);
         Log.w("OniimaiNfc","NFC recovery in "+seconds+"s / stage="+transportStep+" / "+error.getClass().getSimpleName()+" / "+lastTransport);
         // Preserve the presence latch across short disconnects: a held card must not log in twice.
         retry=io.schedule(()->open(gen),seconds,TimeUnit.SECONDS);
     }
-    private void resetRfRecovery(){scanBlocked=false;blockedGameGeneration=-1;rfRetryAfter=0;rfFailures=0;}
+    private void resetRfRecovery(){scanBlocked=false;blockedGameGeneration=-1;rfRetryAfter=0;rfFailures=0;waitForNewGameScan=false;}
     private void notifyGameError(int code){
         if(errorReported||!foreground||gameStatus.getAsInt()!=1)return;
         if(requestGameGeneration>=0&&requestGameGeneration!=gameGeneration.getAsLong())return;

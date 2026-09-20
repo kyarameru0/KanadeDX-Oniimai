@@ -12,8 +12,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class AimeChannel implements AutoCloseable {
     static final int NONE=0,UNSUPPORTED_TYPE=1,MULTIPLE_CARDS=2,READ_FAILED=3,INVALID_CARD=4,TRANSPORT_ERROR=5;
     static final class PollResult {
-        final boolean present;final String accessCode;final int cardType,issue;
-        PollResult(boolean present,String code,int type,int issue){this.present=present;accessCode=code;cardType=type;this.issue=issue;}
+        final boolean present,presenceKnown;final String accessCode;final int cardType,issue;
+        // An error without a validated positive DETECT is neither card presence
+        // nor card removal. Only a successful empty response proves removal.
+        PollResult(boolean present,String code,int type,int issue){this.present=present;presenceKnown=present||issue==NONE;accessCode=code;cardType=type;this.issue=issue;}
     }
     private static final byte[] KEY_B_BYTES={0x57,0x43,0x43,0x46,0x76,0x32};
     private static final byte[] KEY_A_BYTES={0x60,(byte)0x90,(byte)0xd0,0x06,0x32,(byte)0xf5};
@@ -63,6 +65,7 @@ final class AimeChannel implements AutoCloseable {
     synchronized void setScanning(boolean enabled)throws IOException{
         if(!initialized)throw new IOException("NFC reader not initialized");
         if(closed.get())throw new IOException("NFC reader disconnected");
+        if(enabled){lastCardCount=-1;lastCardType=0;}
         if(scanning==enabled)return;
         if(enabled)startRadio();else stopRadio();
         scanning=enabled;if(!enabled)clearCache();
@@ -97,6 +100,7 @@ final class AimeChannel implements AutoCloseable {
     synchronized PollResult poll() throws IOException {
         if(!initialized)throw new IOException("NFC reader not initialized");
         if(!scanning)throw new IOException("NFC reader scanning paused");
+        lastCardCount=-1;lastCardType=0;
         try{return pollActive();}
         finally{if(!closed.get())stopRadio();}
     }
@@ -108,6 +112,9 @@ final class AimeChannel implements AutoCloseable {
         AimeProtocol.Card[] cards;
         try{
             cards=AimeProtocol.cards(request(AimeProtocol.DETECT,AimeProtocol.EMPTY));
+            // Commit evidence before STOP/SELECT/authentication can fail. It is
+            // scoped to this attempt, never inherited from a previous tap.
+            lastCardCount=cards.length;lastCardType=cards.length==1?cards[0].type:0;
             // Windows FeliCa uses STOP before through commands. The upstream
             // MIFARE capture instead keeps RF on through SELECT/AUTH/READ and
             // stops afterwards: stopping here destroys the selected Type A tag.
@@ -118,11 +125,9 @@ final class AimeChannel implements AutoCloseable {
         catch(DeviceError error){
             // A checked reader error is not a USB failure, nor proof of card removal.
             // Keep the held-card cache so a temporary RF error cannot rearm it.
-            lastCardCount=-1;lastCardType=0;
-            return new PollResult(true,null,0,error.status==AimeProtocol.STATUS_INVALID_COMMAND?UNSUPPORTED_TYPE:READ_FAILED);
+            return new PollResult(cardObserved(),null,lastCardType,error.status==AimeProtocol.STATUS_INVALID_COMMAND?UNSUPPORTED_TYPE:READ_FAILED);
         }
         catch(IllegalArgumentException e){lastStatus=-6;close();throw new IOException("Invalid NFC card report",e);}
-        lastCardCount=cards.length;lastCardType=cards.length==1?cards[0].type:0;
         if(cards.length==0){clearCache();return new PollResult(false,null,0,NONE);}
         if(cards.length!=1){clearCache();return new PollResult(true,null,0,MULTIPLE_CARDS);}
         AimeProtocol.Card card=cards[0];long now=System.nanoTime()/1000000;
@@ -250,6 +255,7 @@ final class AimeChannel implements AutoCloseable {
         final int status;DeviceError(int status,int command){super("NFC command "+Integer.toHexString(command)+" status "+status);this.status=status;}
     }
     boolean isClosed(){return closed.get();}
+    boolean cardObserved(){return lastCardCount>0;}
     String[] trace(){return trace.snapshot();}
     boolean detectPending(){CompletableFuture<AimeProtocol.Reply> current=pending;return !closed.get()&&expectedAddress==AimeProtocol.ADDRESS&&expectedCommand==AimeProtocol.DETECT&&current!=null&&!current.isDone();}
     /** Metadata-only early observation; never cancels or sends a second command. */

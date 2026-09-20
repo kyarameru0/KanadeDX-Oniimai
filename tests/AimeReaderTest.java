@@ -31,7 +31,7 @@ public final class AimeReaderTest {
     public static void main(String[] args)throws Exception{
         testEmptyFieldCadence();
         testRfCommandRecovery();
-        AtomicInteger opens=new AtomicInteger(),accepted=new AtomicInteger(),ready=new AtomicInteger(0),reads=new AtomicInteger(),detects=new AtomicInteger(),radio=new AtomicInteger(),color=new AtomicInteger(-1),nativeColor=new AtomicInteger(-1);
+        AtomicInteger opens=new AtomicInteger(),accepted=new AtomicInteger(),transportErrors=new AtomicInteger(),ready=new AtomicInteger(0),reads=new AtomicInteger(),detects=new AtomicInteger(),radio=new AtomicInteger(),color=new AtomicInteger(-1),nativeColor=new AtomicInteger(-1);
         AtomicBoolean present=new AtomicBoolean(),silent=new AtomicBoolean();AtomicReference<UsbIo.Cdc> handle=new AtomicReference<>();
         AtomicLong scanGeneration=new AtomicLong(1),rfNow=new AtomicLong(1000);
         UsbIo.Cdc.opened=port->{opens.incrementAndGet();handle.set(port);port.onWrite=packet->{
@@ -48,7 +48,7 @@ public final class AimeReaderTest {
             }
             port.receive(reply(request,data));
         };};
-        AimeReader reader=new AimeReader(new UsbManager(),ready::get,nativeColor::get,scanGeneration::get,(code,gen)->{accepted.incrementAndGet();ready.set(2);return true;},(code,gen)->{},rfNow::get);
+        AimeReader reader=new AimeReader(new UsbManager(),ready::get,nativeColor::get,scanGeneration::get,(code,gen)->{accepted.incrementAndGet();ready.set(2);return true;},(code,gen)->transportErrors.incrementAndGet(),rfNow::get);
         try{
             reader.start(new UsbIo.Port());await(()->reader.summary().contains("리더 연결됨"),"named port handshake completed");
             present.set(true);Thread.sleep(550);
@@ -75,6 +75,7 @@ public final class AimeReaderTest {
             ready.set(1);
             silent.set(true);await(()->reader.summary().contains("재연결"),"USB read failure schedules independent retry");
             check(reader.running()&&handle.get().closed,"failure closes only NFC handle while session stays enabled");
+            check(transportErrors.get()==0,"an earlier successful card cannot justify a new START failure as another card event");
             check(reader.failureDiagnostic().contains("\n+")&&!reader.failureDiagnostic().contains("0123456789"),"closed reader retains safe command history after transport cleanup");
             UsbIo.replacement=new UsbIo.Port();
             silent.set(false);await(()->!handle.get().closed&&(reader.summary().contains("카드를 리더")||reader.summary().contains("자동 재시도")),"reconnect succeeds without settings panel; only failed card requests require RF cooldown");
@@ -114,7 +115,7 @@ public final class AimeReaderTest {
         }finally{reader.destroy();UsbIo.Cdc.opened=null;UsbIo.replacement=null;}
     }
     static void testErrorFeedbackAndScanContainment()throws Exception{
-        AtomicInteger mode=new AtomicInteger(),errors=new AtomicInteger(),lastError=new AtomicInteger(),detects=new AtomicInteger(),emptyReports=new AtomicInteger(),heldRequests=new AtomicInteger(),radio=new AtomicInteger(),color=new AtomicInteger(-1);
+        AtomicInteger mode=new AtomicInteger(),errors=new AtomicInteger(),lastError=new AtomicInteger(),detects=new AtomicInteger(),emptyReports=new AtomicInteger(),heldRequests=new AtomicInteger(),unknownReports=new AtomicInteger(),radio=new AtomicInteger(),color=new AtomicInteger(-1);
         AtomicBoolean holdDetect=new AtomicBoolean();AtomicLong scanGeneration=new AtomicLong(1),reportedGeneration=new AtomicLong(-1),rfNow=new AtomicLong(1000);AtomicReference<UsbIo.Cdc> handle=new AtomicReference<>();
         UsbIo.Cdc.opened=port->{handle.set(port);port.onWrite=packet->{
             byte[] request=decode(packet),data=new byte[0];int command=request[3]&255,status=0;
@@ -124,6 +125,7 @@ public final class AimeReaderTest {
             if(command==AimeProtocol.DETECT){
                 detects.incrementAndGet();if(holdDetect.get()){heldRequests.incrementAndGet();return;}
                 if(mode.get()==0){data=new byte[]{0};emptyReports.incrementAndGet();}
+                else if(mode.get()==5){status=1;unknownReports.incrementAndGet();}
                 else if(mode.get()==1)data=new byte[]{1,0x10,7,1,2,3,4,5,6,7};
                 else if(mode.get()==2)data=new byte[]{2,0x10,4,1,2,3,4,0x10,4,5,6,7,8};
                 else data=new byte[]{1,0x10,4,1,2,3,4};
@@ -136,6 +138,10 @@ public final class AimeReaderTest {
             reader.start(new UsbIo.Port());await(()->emptyReports.get()>=2,"reader polls empty field with RF active");check(errors.get()==0,"no-card report does not show a game error");
             mode.set(1);await(()->errors.get()==1,"unsupported physical card produces game error");check(lastError.get()==AimeChannel.UNSUPPORTED_TYPE,"unsupported card retains error category");
             Thread.sleep(750);check(errors.get()==1,"held unsupported card does not repeatedly show errors");
+            mode.set(5);await(()->unknownReports.get()>=2,"reader reports DETECT errors without a card list");
+            check(errors.get()==1,"DETECT error without new card evidence does not become a game read event");
+            int beforeUnknown=detects.get();mode.set(1);await(()->detects.get()>beforeUnknown,"positive card report follows uncertain detector response");Thread.sleep(200);
+            check(errors.get()==1,"uncertain detector response does not rearm held-card error feedback");
             scanGeneration.incrementAndGet();await(()->errors.get()==2,"new explicit game scan allows a new error result");
             for(int testMode=2;testMode<=4;testMode++){
                 int empties=emptyReports.get(),beforeErrors=errors.get();mode.set(0);await(()->emptyReports.get()>empties,"card removal observed before next error case");mode.set(testMode);
@@ -150,24 +156,24 @@ public final class AimeReaderTest {
             check(!reader.takeDetectStall(),"one early snapshot per outstanding DETECT");
             check(!old.closed&&heldRequests.get()==1&&errors.get()==previousErrors,"early snapshot does not close USB, retry DETECT or invent a game error");
             reader.detached();
-            await(()->old.closed&&errors.get()==previousErrors+1,"physical detach cancels pending worker and sends one game error");
-            check(lastError.get()==AimeChannel.TRANSPORT_ERROR,"USB restart during detection is a transport error, never an invented card");
-            check(reportedGeneration.get()==scanGeneration.get(),"transport feedback carries the game scan generation that authorized the request");
+            await(()->old.closed&&reader.diagnostic().contains("Issue: 5"),"physical detach cancels pending worker and records transport failure locally");
+            check(errors.get()==previousErrors,"empty-field USB failure cannot advance game entry");
+            check(lastError.get()==AimeChannel.INVALID_CARD,"idle failure does not overwrite the game's last real card error");
             await(()->handle.get()!=old&&!handle.get().closed&&reader.summary().contains("자동 재시도"),"NFC handle recovers while RF-only retry countdown remains active");
             int blockedDetects=detects.get();Thread.sleep(550);check(detects.get()==blockedDetects&&radio.get()==0&&color.get()==0xffffff,"blocked recovery preserves reader LED but sends no START or DETECT");
             reader.foreground(false);Thread.sleep(350);reader.foreground(true);Thread.sleep(650);
             check(detects.get()==blockedDetects&&radio.get()==0&&reader.summary().contains("자동 재시도"),"focus alone cannot restart the failed game scan");
             UsbIo.Cdc recovered=handle.get();reader.detached();await(()->recovered.closed&&handle.get()!=recovered&&!handle.get().closed,"unrelated later USB reconnect restores the same NFC worker");Thread.sleep(550);
             check(detects.get()==blockedDetects&&radio.get()==0,"USB reconnect alone cannot restart the failed game scan");
-            holdDetect.set(false);scanGeneration.incrementAndGet();rfNow.addAndGet(15000);
-            await(()->detects.get()>blockedDetects&&radio.get()==1&&!reader.summary().contains("자동 재시도"),"a fresh game scan after cooldown automatically permits RF without an app retry button or OFF/ON");
-            check(errors.get()==previousErrors+1,"empty field after automatic new-scan recovery does not create another game error");
+            holdDetect.set(false);rfNow.addAndGet(15000);
+            await(()->detects.get()>blockedDetects&&radio.get()==1&&!reader.summary().contains("자동 재시도"),"idle transport recovery resumes in the same game scan after cooldown without forcing entry");
+            check(errors.get()==previousErrors,"empty field after same-scan recovery does not create a game error");
             final int beforeStop=heldRequests.get();holdDetect.set(true);await(()->heldRequests.get()>beforeStop,"request pending before reader OFF");
             UsbIo.Cdc stopping=handle.get();reader.stop();await(()->stopping.closed,"OFF cancels10s DETECT without waiting for its deadline");
-            check(errors.get()==previousErrors+1,"explicit OFF cancellation does not report a game read error");
+            check(errors.get()==previousErrors,"explicit OFF cancellation does not report a game read error");
             final int beforeDestroy=heldRequests.get();reader.start(new UsbIo.Port());await(()->heldRequests.get()>beforeDestroy,"request pending before destroy");
             UsbIo.Cdc destroying=handle.get();reader.destroy();await(()->destroying.closed,"destroy cancels10s DETECT promptly");
-            check(errors.get()==previousErrors+1,"destroy cancellation does not report a game read error");
+            check(errors.get()==previousErrors,"destroy cancellation does not report a game read error");
         }finally{reader.destroy();UsbIo.Cdc.opened=null;UsbIo.replacement=null;}
     }
     static void testStaleScanGeneration()throws Exception{
@@ -215,12 +221,12 @@ public final class AimeReaderTest {
             try{
                 reader.start(new UsbIo.Port());await(()->reader.summary().contains("리더 연결됨"),"RF error test initializes before game scan");
                 UsbIo.Cdc before=handle.get();ready.set(1);
-                await(()->errors.get()==1,"RF command disconnect is reported to game");
-                check(lastError.get()==AimeChannel.TRANSPORT_ERROR&&reportedGeneration.get()==1,"START and STOP errors retain their authorized game generation");
+                await(()->reader.diagnostic().contains("Issue: 5"),"RF command disconnect is recorded as a local transport fault");
+                check(errors.get()==0&&reportedGeneration.get()==-1,"START and empty-field STOP errors do not fabricate card entry");
                 check(reader.diagnostic().contains("Issue: 5"),"RF command transport failure is visible in diagnostic status");
                 await(()->handle.get()!=before&&!handle.get().closed&&reader.summary().contains("자동 재시도"),"RF command failure reconnects CDC with cooldown");
                 int attempts=rfRequests.get();scanGeneration.incrementAndGet();Thread.sleep(650);
-                check(rfRequests.get()==attempts&&errors.get()==1,"New game scan cannot bypass RF cooldown after START or STOP failure");
+                check(rfRequests.get()==attempts&&errors.get()==0,"New game scan cannot bypass RF cooldown or fabricate a card error after START or STOP failure");
                 rfNow.addAndGet(15000);await(()->rfRequests.get()>attempts,"New scan resumes automatically after RF command cooldown");
             }finally{reader.destroy();UsbIo.Cdc.opened=null;UsbIo.replacement=null;}
         }
@@ -234,20 +240,21 @@ public final class AimeReaderTest {
             if((request[1]&255)==8&&command==0x81){color.set((request[5]&255)<<16|(request[6]&255)<<8|(request[7]&255));return;}
             if(command==AimeProtocol.FW||command==AimeProtocol.HW)data=new byte[]{1};
             if(command==AimeProtocol.START)radio.set(1);if(command==AimeProtocol.STOP)radio.set(0);
-            if(command==AimeProtocol.DETECT){if(stall.get()){held.incrementAndGet();return;}data=new byte[]{1,0x10,4,1,2,3,4};}
+            if(command==AimeProtocol.DETECT)data=new byte[]{1,0x10,4,1,2,3,4};
+            if(command==AimeProtocol.SELECT&&stall.get()){held.incrementAndGet();return;}
             if(command==AimeProtocol.READ){data=new byte[16];if(request[9]==1){data[0]='S';data[1]='B';data[2]='S';data[3]='D';}else System.arraycopy(AimePresence.bcd("01234567890123456789"),0,data,6,10);}
             port.receive(reply(request,data));
         };};
         AimeReader reader=new AimeReader(new UsbManager(),ready::get,nativeColor::get,scanGeneration::get,(code,gen)->{accepted.incrementAndGet();ready.set(2);return true;},(code,gen)->errors.incrementAndGet(),rfNow::get);
         try{
-            reader.start(new UsbIo.Port());await(()->held.get()==1,"RF cooldown test begins with a pending detect");
+            reader.start(new UsbIo.Port());await(()->held.get()==1,"RF cooldown test begins with SELECT after a confirmed card");
             long[] delays={15000,30000,60000,60000};
             for(int i=0;i<delays.length;i++){
                 UsbIo.Cdc old=handle.get();int beforeHeld=held.get(),beforeErrors=errors.get();
                 // Cover either callback ordering: USB failure may close the channel
                 // before Android broadcasts its detach notification.
                 if(i==1)old.failure.accept("simulated physical removal");else reader.detached();
-                await(()->old.closed&&errors.get()==beforeErrors+1,"one game transport error per failed RF attempt");
+                await(()->old.closed&&errors.get()==beforeErrors+1,"confirmed card plus failed SELECT sends exactly one game read error");
                 await(()->handle.get()!=old&&!handle.get().closed&&reader.summary().contains("자동 재시도"),"CDC reconnect is independent of RF cooldown",12000);
                 check(reader.summary().contains((delays[i]/1000)+"초"),"RF retry uses 15, 30, 60 seconds with a 60-second cap");
                 scanGeneration.addAndGet(3);nativeColor.set(0x102030+i);

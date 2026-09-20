@@ -1,6 +1,6 @@
 # User guide
 
-Version 1.1.0-rc3 adds KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The published 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
+Version 1.1.0-rc4 adds KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The published 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
 
 ## First connection
 

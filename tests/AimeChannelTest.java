@@ -111,7 +111,7 @@ public final class AimeChannelTest {
         check(transientF.poll().issue==AimeChannel.READ_FAILED&&flakyF.felicaReads==2&&!transientF.isClosed(),"Repeated held-card read failure stops after two attempts without closing CDC");
         for(int status=1;status<=6;status++){
             ordinary.detectStatus=status;AimeChannel.PollResult detectError=nonAime.poll();
-            check(detectError.present&&detectError.accessCode==null&&detectError.issue!=AimeChannel.NONE&&!nonAime.isClosed(),"Valid DETECT error keeps transport and does not fabricate removal or a usable card");
+            check(!detectError.present&&!detectError.presenceKnown&&!nonAime.cardObserved()&&detectError.accessCode==null&&detectError.issue!=AimeChannel.NONE&&!nonAime.isClosed(),"DETECT status error proves neither card presence nor removal, even after a previous card");
         }
         ordinary.detectStatus=0;check(nonAime.poll()==unsupported&&Collections.frequency(ordinary.commands,0x55)==1,"An intervening DETECT error does not rearm held-card authentication");
         ordinary.detected=hex("00");check(!nonAime.poll().present&&!nonAime.isClosed(),"Removal of unsupported card is still detected on the existing CDC connection");
@@ -177,12 +177,15 @@ public final class AimeChannelTest {
         System.out.println("PASS: "+checks+" Aime channel checks");
     }
     static void testRfTransportFailures()throws Exception{
-        for(int command:new int[]{AimeProtocol.START,AimeProtocol.STOP}){
-            Reader device=new Reader();device.detected=hex("00");AimeChannel channel=new AimeChannel(device.port,25);
+        for(boolean present:new boolean[]{false,true})for(int command:new int[]{AimeProtocol.START,AimeProtocol.STOP}){
+            Reader device=new Reader();if(!present)device.detected=hex("00");AimeChannel channel=new AimeChannel(device.port,25);
             channel.initialize(false);java.util.function.Consumer<byte[]> responder=device.port.onWrite;
             device.port.onWrite=wire->{if((unframe(wire)[3]&255)!=command)responder.accept(wire);};
             try{channel.setScanning(true);channel.poll();throw new AssertionError("Missing RF acknowledgement accepted");}
-            catch(IOException expected){check(channel.cardRequestFailed()&&channel.isClosed(),"RF ON and scan RF OFF failures enter card error/cooldown handling");}
+            catch(IOException expected){
+                check(channel.cardRequestFailed()&&channel.isClosed(),"RF ON and scan RF OFF failures enter transport cooldown handling");
+                check(channel.cardObserved()==(present&&command==AimeProtocol.STOP),"Only STOP after a validated positive DETECT retains card evidence; empty-field and START failures have none");
+            }
         }
         Reader device=new Reader();AimeChannel channel=new AimeChannel(device.port,25);
         java.util.function.Consumer<byte[]> responder=device.port.onWrite;

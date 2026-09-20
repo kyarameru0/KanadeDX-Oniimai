@@ -1,6 +1,6 @@
 # KanadeDX 1.65 compatibility
 
-**Module 1.1.0-rc3** adds the exact **KanadeDX-260721.1649 (1.65)** native build and retains **KanadeDX-260207.0635 (1.60)**. The previously published 1.0.0 APK does not support 1.65. This is a module update; it does not contain or replace the game.
+**Module 1.1.0-rc4** adds the exact **KanadeDX-260721.1649 (1.65)** native build and retains **KanadeDX-260207.0635 (1.60)**. The previously published 1.0.0 APK does not support 1.65. This is a module update; it does not contain or replace the game.
 
 ## What changed
 
@@ -61,6 +61,28 @@ to 8,192 characters; no card numbers, UIDs, payloads, device serial numbers or
 arbitrary exception text are included. A transport failure followed by the
 detach broadcast no longer schedules recovery twice when cleanup already ran.
 
+## Idle game entry correction (rc4)
+
+After the initial rc3 observation, an idle RF `START` timeout was sent to the
+game as a physical-card read error even though no card had been detected. The
+existing error-to-entry adapter then correctly followed its input and advanced
+the attract screen. The input to that adapter was wrong.
+
+rc4 requires a validated positive `DETECT` reply in the **current polling
+attempt** before forwarding a USB read failure to the game. A previous tap,
+RF-on timeout, empty-field RF-off failure or unanswered DETECT is not evidence
+of a new card. Detector status errors without a card list are treated as
+unknown presence; they neither enter the game nor rearm held-card deduplication.
+
+Failures without card evidence are diagnosed and recovered locally. After the
+RF cooldown, automatic polling can resume in the same game scan; there is no
+forced game transition or manual retry button. If a card was actually detected
+and SELECT/authentication/read fails, the existing game error flow is retained.
+Successful Aime/MIFARE reads and phone-NFC delivery keep their existing paths.
+
+This corrects the false game transition. It does not claim to fix the separate
+underlying controller/USB communication fault.
+
 ## Version checks
 
 There is no Android version-name or version-code allowlist. Compatibility is
@@ -72,7 +94,7 @@ game builds.
 
 ## Update
 
-Install the supplied `Oniimai-Kanade-API102-1.1.0-rc3.apk`, keep the module scoped to `app.KanadeDX` in API 102-capable LSPosed, and fully stop/restart the game. Existing controller and dashboard preferences remain in place. Do not clear game data or reflash controller firmware for this update.
+Install the supplied `Oniimai-Kanade-API102-1.1.0-rc4.apk`, keep the module scoped to `app.KanadeDX` in API 102-capable LSPosed, and fully stop/restart the game. Existing controller and dashboard preferences remain in place. Do not clear game data or reflash controller firmware for this update.
 
 If building from source, follow [Build](BUILD.md). Use the same signing key as an installed module when updating it. The 1.0.0 GitHub release and its files remain historical 1.60 artifacts.
 
@@ -82,11 +104,11 @@ If building from source, follow [Build](BUILD.md). Use the same signing key as a
 - Method signatures were matched, including the integer-ID jacket overload. Consumed input, LED, score, notes, UI, startup and Aime field layouts were compared. Unused fields that changed were not treated as shared assumptions.
 - The three Aime interior guards were checked against disassembly of the polling/result/error-window branches, rather than guessed from neighboring method addresses.
 - Android release compilation, APK v2 signing with the existing certificate and 16 KiB ZIP alignment passed.
-- The host suite passed **5,077 checks**, including **572 native state/profile checks** and **151 NFC worker/lifecycle checks**. These include accepting each exact build ID, rejecting truncated/extended/single-byte-mutated IDs, bounded idle polling, a one-shot early stall observation without cancelling USB, and private command snapshots. Locale and module-only distribution audits passed.
+- The host suite passed **5,112 checks**, including **572 native state/profile checks**, **948 NFC channel checks** and **156 NFC worker/lifecycle checks**. These cover unknown/empty/positive card evidence, RF failures before and after confirmed detection, same-scan idle recovery, retained real-card error feedback, held-card deduplication, bounded idle polling and private command snapshots. Locale and module-only distribution audits passed.
 - On the connected rooted Xiaomi Android 16 phone, the installed game's native library hash matched the supplied 1.65 APK. Logs confirmed all core, LED, ceiling, statistics/album, UI, boot and Aime hook groups installed.
 - A physical controller input activated the real startup button. The game's control UI subsequently entered external-output hidden state.
 - The same running session logged three physical-card deliveries and one recoverable read failure progressing through the original error/entry flow. Card types and the visible error dialog were not independently identified in that observation.
-- rc3 installed over rc2 with settings preserved, and a controller input activated the real startup button. Long-duration disconnect prevention and fresh physical-card reads are not yet established for rc3.
+- rc4 installed over rc3 with settings preserved. Logs confirmed the 1.65 native hook groups and NFC connection; a controller input activated the real startup button. The false-entry cases above are covered by simulated transport tests. Fresh physical-card behavior and long-duration USB fault prevention are not established by this revision's installation check.
 
 Hook installation and host checks do not independently prove physical RGB colors, every touch zone, full-song timing, card/server behavior or non-root operation. Fresh 1.60 device testing was not performed during this update; its exact target verification and state tests remain part of the compatibility checks.
 
