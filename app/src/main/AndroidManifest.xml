@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <queries><package android:name="app.KanadeDX" /><package android:name="app.KanadeDX.oniimai" /></queries>
+    <application android:label="Oniimai for KanadeDX" android:description="@string/module_description" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:extractNativeLibs="true">
+        <service android:name=".PhoneNfcService" android:exported="true" />
+        <provider android:name=".NfcBridgeAccess$Provider" android:authorities="io.oniimai.kanade.nfcbridge" android:exported="false" android:grantUriPermissions="true" />
+        <activity android:name=".NfcBridgeAccess$Bootstrap" android:exported="true" android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true" />
+        <receiver android:name=".NfcBridgeAccess$Updated" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter></receiver>
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="300" viewBox="0 0 1120 300" role="img" aria-labelledby="title desc">
+  <title id="title">KanadeDX Oniimai</title>
+  <desc id="desc">Independent Android controller module. USB input, lighting and NFC connect through the module to a game and external display.</desc>
+  <rect width="1120" height="300" rx="24" fill="#f4f7fc"/>
+  <g font-family="Segoe UI,Arial,sans-serif">
+    <text x="42" y="61" fill="#245bb5" font-size="14" letter-spacing="3">LSPOSED CONTROLLER MODULE</text>
+    <text x="42" y="114" fill="#17243b" font-size="38" font-weight="600">KanadeDX Oniimai</text>
+    <text x="42" y="147" fill="#53627a" font-size="17">Input. Light. Play.</text>
+    <rect x="42" y="200" width="204" height="58" rx="12" fill="#e3ebf7"/>
+    <text x="144" y="235" text-anchor="middle" fill="#24364f" font-size="17">Oniimai controller</text>
+    <path d="M258 229h53m-10-6 10 6-10 6" fill="none" stroke="#3972c9" stroke-width="2"/>
+    <rect x="326" y="200" width="204" height="58" rx="12" fill="#285ce6"/>
+    <text x="428" y="235" text-anchor="middle" fill="#ffffff" font-size="17">API 102 module</text>
+    <path d="M542 229h53m-10-6 10 6-10 6" fill="none" stroke="#3972c9" stroke-width="2"/>
+    <rect x="610" y="200" width="204" height="58" rx="12" fill="#e3ebf7"/>
+    <text x="712" y="235" text-anchor="middle" fill="#24364f" font-size="17">KanadeDX 1.60</text>
+    <rect x="896" y="46" width="178" height="212" rx="16" fill="#ffffff" stroke="#c1d0e6"/>
+    <text x="985" y="84" text-anchor="middle" fill="#245bb5" font-size="14">BUILT FOR ANDROID</text>
+    <text x="985" y="123" text-anchor="middle" fill="#24364f" font-size="16">Touch + IO4</text>
+    <text x="985" y="155" text-anchor="middle" fill="#24364f" font-size="16">RGB + NFC</text>
+    <text x="985" y="187" text-anchor="middle" fill="#24364f" font-size="16">External display</text>
+    <text x="985" y="227" text-anchor="middle" fill="#53627a" font-size="13">AI-generated code</text>
+  </g>
+</svg>

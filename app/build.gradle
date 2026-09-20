@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+def noticeResources = layout.buildDirectory.dir('generated/notice-resources')
+def prepareLicenseNotices = tasks.register('prepareLicenseNotices', Sync) {
+    into noticeResources
+    from(rootProject.file('licenses')) { into 'META-INF/licenses' }
+    from(rootProject.file('THIRD_PARTY_NOTICES.md')) {
+        into 'META-INF/licenses'
+        rename { 'PROJECT-NOTICE.txt' }
+    }
+}
+
+android {
+    namespace 'io.oniimai.kanade'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'io.oniimai.kanade'
+        minSdk 28
+        targetSdk 35
+        versionCode 29
+        versionName '1.0.0'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    buildFeatures { compose true; buildConfig true }
+    sourceSets.main.jniLibs.srcDirs = [layout.buildDirectory.dir('native-libs')]
+    sourceSets.main.resources.srcDir(noticeResources.get().asFile)
+    packaging {
+        jniLibs { useLegacyPackaging = true }
+        resources { excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1'] }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    signingConfigs {
+        development {
+            if (providers.gradleProperty('oniimaiKeystore').isPresent()) {
+                storeFile file(providers.gradleProperty('oniimaiKeystore').get())
+                storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android'
+            }
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.development }
+        release { signingConfig signingConfigs.development; minifyEnabled false }
+    }
+}
+tasks.named('preBuild').configure { dependsOn prepareLicenseNotices }
+dependencies {
+    compileOnly 'io.github.libxposed:api:102.0.0'
+    implementation 'top.yukonga.miuix.kmp:miuix-android:0.6.1'
+    implementation 'androidx.compose.ui:ui:1.9.4'
+    implementation 'androidx.compose.foundation:foundation:1.9.4'
+    implementation 'androidx.compose.runtime:runtime:1.9.4'
+    implementation 'androidx.compose.animation:animation:1.9.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.9.4'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.9.4'
+    implementation 'androidx.savedstate:savedstate-ktx:1.3.3'
+}

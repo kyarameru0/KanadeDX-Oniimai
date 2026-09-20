@@ -1,0 +1,27 @@
+# Local build products, credentials and proprietary inputs
+.gradle/
+.kotlin/
+.cxx/
+build/
+app/build/
+work/
+local.properties
+__pycache__/
+*.pyc
+*.apk
+*.aab
+*.aar
+*.jar
+*.so
+*.dll
+*.exe
+*.bin
+*.keystore
+*.jks
+*.bks
+*.log
+.env*
+*.mct
+*.pcap*
+*.dmp
+global-metadata.dat

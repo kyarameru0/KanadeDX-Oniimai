@@ -1,0 +1,98 @@
+{
+  "apk_sha256": "5152f40e583e48d15ec397c967feb28e11652876b637282855d3ee8ba4146e0e",
+  "il2cpp_sha256": "5e740965e842fc7af1328f2679e7d5bbc9e5b24994a55b542e281a955ffdc88b",
+  "elf_build_id": "91209925eccf420bb6a48564b5edf93dce802436",
+  "hooks": {
+    "touch": "0x27a6fac",
+    "frame": "0x2633610",
+    "raw": "0x27a1560",
+    "down": "0x27a1624"
+  },
+  "led_hooks": {
+    "color": "0x21e4580",
+    "press": "0x21e4464",
+    "all": "0x21e4bcc",
+    "off": "0x21e42f8",
+    "fade": "0x21e4664",
+    "ring": "0x21e43c0",
+    "fet": "0x21e4ad4",
+    "ring_fade": "0x21e48d4",
+    "pwm": "0x27a16ec",
+    "block_color": "0x26ff678"
+  },
+  "led_source": "Direct 1P Bd15070_4IF RGB buttons plus three independent white FET channels. Separate original IO.Jvs.SetPwmOutput player 0 and DB.LedBlock Billboard_1P RGB commands; independent of Virtual Keyboard.",
+  "target": "KanadeDX 1.60 (260207.0635)",
+  "metadata_sha256": "8a290480599357bd08510a9757544c0b023506193f66b086794097ebaf0965cc",
+  "metadata_version": 31,
+  "stats_functions": {
+    "game_start": "0x229ec30",
+    "game_release": "0x22a8f64",
+    "result_start": "0x232ffac",
+    "result_release": "0x233a6bc",
+    "score_update": "0x2622c58",
+    "score_utage": "0x262211c",
+    "score_finish": "0x262dda4",
+    "music_get": "0x25e90c8",
+    "notes_update": "0x265d988",
+    "current_msec": "0x265dd44"
+  },
+  "stats_source": "Main-thread GameScoreList snapshots, NotesManager time, MusicData copied strings. Result snapshots retained until ResultProcess release. No managed calls from JNI.",
+  "input_select": {
+    "player1_jvs": 10,
+    "player2_jvs": 19,
+    "submitted_button_bit": 8
+  },
+  "ui_functions": {
+    "settings_cctor": "0x21d6b70",
+    "settings_load": "0x21d494c",
+    "control_update": "0x21d10e0",
+    "prefs_getint": "0x22fe4f8",
+    "prefs_setint": "0x22fe43c",
+    "prefs_save": "0x22feab8",
+    "group_alpha_get": "0x5229340",
+    "group_alpha_set": "0x522937c",
+    "group_interactable_get": "0x52293c8",
+    "group_raycast_get": "0x5229404",
+    "group_raycast_set": "0x5229440",
+    "object_alive": "0x50546f8"
+  },
+  "ui_layout": {
+    "settings_typeinfo": "0x5691030",
+    "main_group": "0x20"
+  },
+  "ui_policy": "Compact OFF once per game-data migration, then preserve user choices. External output temporarily hides the game Display UI CanvasGroup and disables its interaction/raycasts; exact original state restored on the game Update thread.",
+  "boot_functions": {
+    "update": "0x52594bc",
+    "started": "0x22fb79c",
+    "canvas": "0x22fa148",
+    "button_press": "0x50cbc64",
+    "active": "0x5263058",
+    "interactable": "0x5248898"
+  },
+  "boot_layout": {
+    "start_button": "0x60",
+    "start_callback": "0xd0"
+  },
+  "boot_source": "Fresh controller edge presses the real startup Button on EventSystem.Update; manual start and held-input suppression share a one-shot gate.",
+  "album_functions": {
+    "instance": "0x2426c2c",
+    "jacket": "0x2426df8",
+    "selected": "0x26186cc"
+  },
+  "aime_functions": {
+    "update": "0x27be6cc",
+    "start": "0x27be66c",
+    "use": "0x27bee88",
+    "manager_execute": "0x25cad60",
+    "error_poll": "0x25cb07c",
+    "error_result": "0x25cb168",
+    "error_window": "0x2560b84",
+    "unit_start": "0x27bd3f8",
+    "advcheck": "0x25cb32c",
+    "anyread": "0x25cb34c"
+  },
+  "aime_source": "Validated physical 10-byte BCD access code, current original AimeUnit scanning window, original API.UseAimeUnitResult on Unity Update. Existing configured-server lookup and registration retained. No IDm conversion or fake card IDs.",
+  "aime_error_source": "Issues 1..5 use a request-start scan generation token, current open scan and short-lived primitive queue. Unity Update sets existing verified AimeErrorInfo.Category=Warning(1), HasError=true and IsBusy=false while HasResult remains false. Original Manager Polling->Result reports Result.Error; TryAime/ErrorAime opens EntryErrorAimeUnknown(13). Fatal category is never fabricated. Only the next actual AimeUnitStart clears an adapter-owned warning. Successful cards require the same generation token; existing game/server results win races. AdvCheck preserves the original return unless the same adapter-owned warning reached manager Done(9)/Result.Error(4); this releases TryAime.WaitAdvCheck without creating a read result. AnyRead additionally exposes the same completed error as a read event only while original read/enable flags are set, allowing the original AdvertiseProcess.IsGotoEntry path and login-disable guard to enter the card screen.",
+  "aime_led_source": "Capture AimeReaderManager.Execute status commands at the caller; Android AimeUnit LED setters are adjacent 4-byte RET stubs and are not patched. Palette from DebugUI.DebugLED: scan white, success blue, network warning FFEB04, error red; results expire after 3 seconds.",
+  "ceiling_patch": "Exact 4-byte RET at IO.Jvs.SetPwmOutput is replaced by one aligned atomic AArch64 B to a range-checked mmap-hint trampoline. No MAP_FIXED; thunk is RW then RX, original code-page protections restored, adjacent functions unmodified. Failure disables ceiling capture only. Snapshot: status/events/seen + buttons0..7 + Body8/Circle9/Side10 + BillboardRGB11."
+}

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22)
+project(oniimai_kanade)
+add_library(oniimai_kanade SHARED bridge.cpp)
+target_compile_features(oniimai_kanade PRIVATE cxx_std_17)
+target_compile_options(oniimai_kanade PRIVATE -fvisibility=hidden -fno-exceptions -fno-rtti)
+target_link_options(oniimai_kanade PRIVATE -Wl,-z,max-page-size=16384)
+target_link_libraries(oniimai_kanade log dl)
