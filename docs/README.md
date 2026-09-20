@@ -1,6 +1,6 @@
 # Documentation map
 
-**KanadeDX Oniimai** is an LSPosed API 102 module. Current source is **1.1.0-rc5**, adding **260721.1649 (1.65)** alongside **260207.0635 (1.60)**. The published 1.0.0 APK remains 1.60-only. [Compatibility and verification](COMPATIBILITY-1.65.md)
+**KanadeDX Oniimai** is an LSPosed API 102 module. The current [1.1.0-rc5 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.1.0-rc5) supports **260721.1649 (1.65)** alongside **260207.0635 (1.60)**. The historical 1.0.0 APK remains 1.60-only. [Compatibility and verification](COMPATIBILITY-1.65.md)
 
 ## Use the module
 
@@ -32,6 +32,7 @@ Follow **Developer guide → Architecture → Build**. You can build and run hos
 | [Security and privacy](../SECURITY.md) / [Card behavior](CARD_RIGHTS.md) | Data handling and useful bug-report boundaries. |
 | [Disclaimer](../DISCLAIMER.md) / [License and distribution notes](LEGAL_REVIEW.md) / [Host references](HOST_PERMISSIONS.md) | Warranty, license summary and remaining permission limits. |
 | [AI disclosure](../AI_DISCLOSURE.md) | How code and documentation were prepared. |
-| [1.0.0 release notes](RELEASE-1.0.0.md) | Download contents and release validation. |
+| [Current release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.1.0-rc5) / [Compatibility](COMPATIBILITY-1.65.md) | Downloads, changes, known issues and current validation. |
+| [Historical 1.0.0 release notes](RELEASE-1.0.0.md) | Original release contents and validation. |
 
 Documentation on `main` may be newer than a release. The release tag and Source ZIP identify that release's exact source snapshot; its checksum file identifies the downloadable assets.

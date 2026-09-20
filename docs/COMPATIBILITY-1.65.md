@@ -121,7 +121,7 @@ If building from source, follow [Build](BUILD.md). Use the same signing key as a
 - rc5 was installed in the existing NPatch 1.60 host on the rooted Xiaomi Android 16 phone, with the same signing identity and no data reset. Logs showed the permissionless `bound-service` path and two `Phone card delivered in game` events; the tester confirmed successful recognition. This is not a fresh physical 1.65 or independently unrooted-device test.
 - rc4 installed over rc3 with settings preserved. Logs confirmed the 1.65 native hook groups and NFC connection; a controller input activated the real startup button. The false-entry cases above are covered by simulated transport tests. Fresh physical-card behavior and long-duration USB fault prevention are not established by this revision's installation check.
 
-Hook installation and host checks do not independently prove physical RGB colors, every touch zone, full-song timing, card/server behavior or non-root operation. Fresh 1.60 device testing was not performed during this update; its exact target verification and state tests remain part of the compatibility checks.
+Hook installation and host checks do not independently prove physical RGB colors, every touch zone, full-song timing, card/server behavior or non-root operation. The rc5 physical 1.60 check was limited to the NPatch phone-NFC handoff described above; it was not a complete feature regression. Exact target verification and state tests cover both native profiles.
 
 ## Adding another game build
 

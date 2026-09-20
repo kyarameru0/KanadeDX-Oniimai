@@ -1,6 +1,6 @@
 # License and distribution notes
 
-Reviewed 2026-09-20 for version 1.0.0. This is not a legal opinion or a grant of rights over the game.
+Reviewed 2026-09-20 for the 1.1.0-rc5 publication review and the historical 1.0.0 release. The unresolved permission questions below remain open. This is not a legal opinion or a grant of rights over the game.
 
 ## What to keep with a release
 
