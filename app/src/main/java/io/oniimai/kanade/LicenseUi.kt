@@ -1,3 +1,4 @@
+// Modified 2026-09-29 (UI refinement pass, see CHANGES-UI.md). Original: KanadeDX-Oniimai 1.1.0-rc5 @ 1c9c518b.
 package io.oniimai.kanade
 
 import android.app.Activity
@@ -27,7 +28,7 @@ internal object LicenseUi {
         lateinit var panel: AlertDialog
         panel = NativeUi.dialog(activity) {
             NativeUi.Page(tr("라이선스 · 출처", "许可与来源"), back = { panel.dismiss() }) {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap)) {
+                LazyColumn(Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
                     item { Card(insideMargin = PaddingValues(OniTokens.inset)) {
                         Text("Oniimai ${BuildConfig.VERSION_NAME} · GPL-3.0-only")
                         Spacer(Modifier.height(OniTokens.gap))
@@ -73,9 +74,9 @@ internal object LicenseUi {
             }
             NativeUi.Page(name, back = { panel.dismiss() }) {
                 val content = paragraphs
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap)) {
-                    if (failed) item { Text(tr("동봉된 원문을 불러오지 못했습니다. 같은 버전의 Source ZIP에서 licenses 폴더를 확인하세요.", "无法载入随附原文。请查看同版本 Source ZIP 中的 licenses 文件夹。")) }
-                    else if (content == null) item { Text(tr("불러오는 중…", "正在载入…")) }
+                LazyColumn(Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
+                    if (failed) item { Caption(color = ERROR_TEXT, text = tr("동봉된 원문을 불러오지 못했습니다. 같은 버전의 Source ZIP에서 licenses 폴더를 확인하세요.", "无法载入随附原文。请查看同版本 Source ZIP 中的 licenses 文件夹。")) }
+                    else if (content == null) item { Caption(tr("불러오는 중…", "正在载入…"), Modifier.padding(horizontal = OniTokens.inset)) }
                     else items(content) { paragraph -> SelectionContainer { Text(paragraph, modifier = Modifier.fillMaxWidth()) } }
                 }
             }

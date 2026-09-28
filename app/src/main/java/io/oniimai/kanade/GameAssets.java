@@ -1,3 +1,4 @@
+// Modified 2026-09-29 (UI refinement pass, see CHANGES-UI.md). Original: KanadeDX-Oniimai 1.1.0-rc5 @ 1c9c518b.
 package io.oniimai.kanade;
 
 import android.content.Context;
@@ -16,7 +17,7 @@ import java.io.File;
 /** System typography and an original, code-drawn empty-artwork icon. No packaged visual assets. */
 final class GameAssets {
     private static final Typeface[] FONTS=new Typeface[3];
-    private static Bitmap placeholder;
+    private static final Bitmap[] placeholders=new Bitmap[2];
     private GameAssets(){}
     // No copied game assets or bundled vendor fonts. Keep no Activity/Context reference.
     static String apkPath;
@@ -58,18 +59,22 @@ final class GameAssets {
             .setFontVariationSettings("'wght' "+axis).build();
         return new FontFamily.Builder(font).build();
     }
-    static synchronized Bitmap placeholder(){
-        if(placeholder==null){
-            placeholder=Bitmap.createBitmap(192,192,Bitmap.Config.ARGB_8888);
-            Canvas canvas=new Canvas(placeholder);Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-            paint.setColor(GameUi.PALE);canvas.drawRoundRect(new RectF(0,0,192,192),24,24,paint);
+    static Bitmap placeholder(){return placeholder(false);}
+    /** Night variant avoids a bright tile inside dark widgets; both are cached on first use. */
+    static synchronized Bitmap placeholder(boolean night){
+        int slot=night?1:0;
+        if(placeholders[slot]==null){
+            Bitmap bitmap=Bitmap.createBitmap(192,192,Bitmap.Config.ARGB_8888);
+            Canvas canvas=new Canvas(bitmap);Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setColor(night?GameUi.NIGHT_PALE:GameUi.PALE);canvas.drawRoundRect(new RectF(0,0,192,192),24,24,paint);
             // A restrained equalizer mark denotes artwork unavailable; it does not represent live data.
-            int[] heights={36,64,86,54};paint.setColor(GameUi.BLUE);
+            int[] heights={36,64,86,54};paint.setColor(GameUi.accent(night));
             for(int i=0;i<heights.length;i++){
                 float x=48+i*26,top=96-heights[i]/2f;
                 canvas.drawRoundRect(new RectF(x,top,x+14,top+heights[i]),7,7,paint);
             }
+            placeholders[slot]=bitmap;
         }
-        return placeholder;
+        return placeholders[slot];
     }
 }

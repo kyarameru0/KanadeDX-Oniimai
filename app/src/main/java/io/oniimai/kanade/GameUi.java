@@ -1,3 +1,4 @@
+// Modified 2026-09-29 (UI refinement pass, see CHANGES-UI.md). Original: KanadeDX-Oniimai 1.1.0-rc5 @ 1c9c518b.
 package io.oniimai.kanade;
 
 import android.content.Context;
@@ -15,9 +16,17 @@ final class GameUi {
             SLATE=0xff202124, ON_ACCENT=0xffffffff, GOLD=ON_ACCENT, TAB=0xff4b596d, ERROR=0xffd33c48,
             PALE=0xfff2f3f5, ACCENT_PALE=0xffeaf2ff;
     static final int[] JUDGMENT={0xffa95613,0xff8c7110,0xff9a52b0,0xff258653,0xff696b70,BLUE,0xffc54c89};
-    static final int PAGE=0xfff5f5f5, TOUCH_DP=48, RADIUS_DP=22, MOTION_MS=140;
+    // PAGE matches the Miuix light background (#F7F7F7) used by the Compose screens and system bars.
+    static final int PAGE=0xfff7f7f7, TOUCH_DP=48, RADIUS_DP=22, CARD_RADIUS_DP=16, MOTION_MS=140;
+    /** Miuix primary / divider / muted values for Android-View drawing that must follow day/night. */
+    static final int DAY_ACCENT=0xff3482ff, NIGHT_ACCENT=0xff277af7, NIGHT_LINE=0xff393939, DAY_LINE=0xffe0e0e0,
+            NIGHT_MUTED=0xff8c8c8c, NIGHT_PALE=0xff383838;
     private GameUi() {}
     static String tr(String ko,String zh) { return "zh-Hans".equals(UiText.language())?zh:ko; }
+    static boolean night(Context c){return (c.getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES;}
+    static int accent(boolean night){return night?NIGHT_ACCENT:DAY_ACCENT;}
+    static int line(boolean night){return night?NIGHT_LINE:DAY_LINE;}
+    static int muted(boolean night){return night?NIGHT_MUTED:MUTED;}
     static int dp(Context c,float value) { return Math.round(value*c.getResources().getDisplayMetrics().density); }
     static void buttonRole(View view){view.setFocusable(true);view.setAccessibilityDelegate(new View.AccessibilityDelegate(){@Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.setClassName("android.widget.Button");}});}
     static void appear(View view){if(!android.animation.ValueAnimator.areAnimatorsEnabled())return;view.animate().cancel();view.setAlpha(.55f);view.setTranslationY(dp(view.getContext(),4));view.animate().alpha(1).translationY(0).setDuration(MOTION_MS).start();}

@@ -8,15 +8,15 @@
   </picture>
   <h1>KanadeDX Oniimai</h1>
   <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX on Android.</p>
-  <p><strong>1.1.0-rc5</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
+  <p><strong>1.2.0</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
   <p><a href="#quick-start">Install</a> · <a href="docs/USER_GUIDE.md">Use</a> · <a href="docs/DEVELOPER_GUIDE.md">Understand the code</a> · <a href="docs/BUILD.md">Build</a> · <a href="docs/README.md">All documentation</a></p>
 </div>
 
-**The current [1.1.0-rc5 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.1.0-rc5) supports KanadeDX-260721.1649 (1.65) and KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [validation and update notes](docs/COMPATIBILITY-1.65.md). The historical **1.0.0 APK supports 1.60 only**.
+**The current [1.2.0 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.0) supports KanadeDX-260721.1649 (1.65) and KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [validation and update notes](docs/COMPATIBILITY-1.65.md). The historical **1.0.0 APK supports 1.60 only**.
 
 **New code, tests and documentation were generated and modified with OpenAI Codex.** Requirements and device feedback came from the maintainer. Third-party code retains its own authorship and licenses. [AI disclosure](AI_DISCLOSURE.md)
 
-> **v1.1.0-rc5 · Standalone LSPosed module.** Published as the latest regular release; the tested version name retains its `rc5` suffix. The release contains the module APK, module source and dependency sources. The game, songs, artwork, controller firmware and integrated game APKs are not included.
+> **v1.2.0 · Standalone LSPosed module.** Refined Miuix settings and dashboard. [Release notes](docs/RELEASE-1.2.0.md). The release contains the module APK, module source and dependency sources. The game, songs, artwork, controller firmware and integrated game APKs are not included.
 
 <details>
 <summary>Contents</summary>
@@ -40,7 +40,7 @@
 | Cards | Controller Aime reader and **phone NFC directly inside the game**, with read failures routed into the game flow |
 | External display | A portrait game rotated 90°/270° on a landscape monitor, with phone/external switching |
 | Phone dashboard | Configurable song, score, judgment, sensor and device widgets; results retained until leaving the result screen |
-| Settings | Kotlin · Jetpack Compose · Miuix UI, first-run setup, Korean and Simplified Chinese app languages |
+| Settings | Kotlin · Jetpack Compose · Miuix UI, guided setup, grouped controls, Korean and Simplified Chinese app languages |
 
 Output refresh rate depends on the modes exposed by the phone, adapter, cable and monitor. Consistent frame delivery is not guaranteed on every setup. Phone MIFARE Classic reading requires compatible NFC hardware.
 
@@ -51,7 +51,7 @@ Output refresh rate depends on the modes exposed by the phone, adapter, cable an
 
 You need an Android 9+ ARM64 device, an LSPosed environment supporting **modern API 102 and native hooks**, your copy of the supported game, and an Oniimai controller with USB OTG.
 
-1. Install `Oniimai-Kanade-API102-1.1.0-rc5.apk` from [Releases](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.1.0-rc5).
+1. Install `Oniimai-Kanade-API102-1.2.0.apk` from [Releases](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.0).
 2. Enable the module in LSPosed and select **KanadeDX (`app.KanadeDX`)** as its scope.
 3. Fully stop and restart the game process.
 4. Choose a language and monitor orientation in first-run setup. Grant the controller USB permission. Touch and command ports have different roles.
@@ -101,7 +101,7 @@ Most implementation code lives in `app/src/main/java/io/oniimai/kanade/` and `ap
 <a id="validation"></a>
 ## Validation
 
-The rc4 baseline passed **5,112 host checks**. The rc5 NFC receiver change passed **111 focused checks**, followed by release compilation, signature, alignment, localization and module-only distribution checks. These are separate runs, not a fresh full-suite result for rc5.
+For the 1.2.0 build checks and revised UI testing limits, see [release validation](docs/RELEASE-1.2.0.md#validation-and-known-limits). The revised UI has not received a fresh physical-device layout or gesture check.
 
 On a rooted Xiaomi Android 16 phone, rc5 delivered phone-NFC results inside a patched 1.60 host, and the tester confirmed recognition. Separate 1.65 hook/input/card observations and the remaining hardware limits are recorded in [current validation](docs/COMPATIBILITY-1.65.md#verification). Independent non-root-device validation and long-duration USB stability are not established. [Historical 1.0.0 validation](docs/VALIDATION.md)
 

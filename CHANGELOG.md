@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 — 2026-09-29
+
+Refined Miuix settings and dashboard, retaining the 1.60/1.65 native profiles.
+
+- Module home summary, collapsing headers, selection indicators and clearer three-step setup.
+- Status/control/footnote grouping, numeric validation and LED brightness presets.
+- Dashboard achievement and timing indicators, larger artwork and clearer dark-mode labels.
+- Widget selection/drag feedback and confirmation before discarding changed layouts.
+- Version code 37; existing module signing identity and dependency versions retained.
+
+See [release notes](docs/RELEASE-1.2.0.md) for upgrade instructions, validation and known limits.
+
 ## 1.0.0 — 2026-09-20
 
 First standalone LSPosed API 102 module release. Tested only with KanadeDX-260207.0635 (1.60).

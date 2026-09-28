@@ -1,8 +1,8 @@
+// Modified 2026-09-29 (UI refinement pass, see CHANGES-UI.md). Original: KanadeDX-Oniimai 1.1.0-rc5 @ 1c9c518b.
 package io.oniimai.kanade;
 
 import android.content.SharedPreferences;
 import android.graphics.*;
-import android.graphics.drawable.Drawable;
 import android.view.*;
 import android.widget.*;
 import java.util.*;
@@ -92,16 +92,22 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
         hint.setVisibility(View.GONE);
         header.addView(NativeDashboard.header(host.activity(),editing,preview,host.demo(),()->{if(editing)save();else edit(-1);}),new LinearLayout.LayoutParams(-1,-2));
         String[] labels=editing?new String[]{GameUi.tr("추가","添加"),GameUi.tr("배치","布局"),GameUi.tr("취소","取消")}:preview?new String[]{GameUi.tr("돌아가기","返回")}:new String[]{GameUi.tr("폰으로 전환","切换到手机"),GameUi.tr("설정","设置")};
-        Runnable[] actions=editing?new Runnable[]{this::catalog,this::arrange,this::finish}:preview?new Runnable[]{close}:new Runnable[]{close,host::showSettings};
-        toolbar.addView(NativeDashboard.footer(host.activity(),labels,actions,editing),new LinearLayout.LayoutParams(-1,-2));
+        Runnable[] actions=editing?new Runnable[]{this::catalog,this::arrange,this::confirmExit}:preview?new Runnable[]{close}:new Runnable[]{close,host::showSettings};
+        toolbar.addView(NativeDashboard.footer(host.activity(),labels,actions,false),new LinearLayout.LayoutParams(-1,-2));
     }
     private void edit(int id){if(!editing){layout=layout.copy();editing=true;host.setDashboardEditing(true);}selected=id;chrome();board.rebuild();}
     private void save(){host.prefs().edit().putString(KEY,layout.encode()).apply();finish();toast(GameUi.tr("위젯 배치를 저장했습니다","已保存小组件布局"));}
     private void finish(){editing=false;host.setDashboardEditing(false);host.prefs().edit().remove(DRAFT_KEY).apply();selected=-1;layout=loadLayout(KEY);chrome();board.rebuild();}
     boolean back(){
         if(!editing)return false;
-        host.choose(GameUi.tr("편집을 마칠까요?","结束编辑？"),new String[]{GameUi.tr("저장하고 마치기","保存并结束"),GameUi.tr("변경 취소","放弃更改"),GameUi.tr("계속 편집","继续编辑")},-1,i->{if(i==0)save();else if(i==1)finish();});return true;
+        confirmExit();return true;
     }
+    /** Unchanged drafts close silently; otherwise ask, so one stray tap on Cancel cannot discard work. */
+    private void confirmExit(){
+        if(!dirty()){finish();return;}
+        host.choose(GameUi.tr("편집을 마칠까요?","结束编辑？"),new String[]{GameUi.tr("저장하고 마치기","保存并结束"),GameUi.tr("변경 취소","放弃更改"),GameUi.tr("계속 편집","继续编辑")},-1,i->{if(i==0)save();else if(i==1)finish();});
+    }
+    private boolean dirty(){return !layout.encode().equals(DashboardLayout.parse(host.prefs().getString(KEY,"")).encode());}
     private void catalog(){
         String[] options=new String[TYPES.length];
         for(int i=0;i<TYPES.length;i++){
@@ -208,14 +214,16 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
         }
         @Override protected void onDraw(Canvas canvas){
             super.onDraw(canvas);
-            if(editing){paint.setColor(GameUi.LINE);for(float y=cellHeight/2;y<getHeight();y+=cellHeight+gap)for(float x=gridLeft+cellWidth/2;x<getWidth()-gridLeft;x+=cellWidth+gap)canvas.drawCircle(x,y,dp(2),paint);}
-            if(getChildCount()==0){paint.setColor(GameUi.MUTED);paint.setTypeface(GameAssets.font(getContext()));paint.setTextSize(dp(16));paint.setTextAlign(Paint.Align.CENTER);String text=GameUi.tr("위젯을 추가해 나만의 화면을 만드세요","添加小组件，打造专属界面");float width=paint.measureText(text);if(width>getWidth()-dp(16))paint.setTextSize(paint.getTextSize()*(getWidth()-dp(16))/width);canvas.drawText(text,getWidth()/2f,dp(95),paint);}
+            boolean night=GameUi.night(getContext());
+            if(editing){paint.setColor(GameUi.line(night));for(float y=cellHeight/2;y<getHeight();y+=cellHeight+gap)for(float x=gridLeft+cellWidth/2;x<getWidth()-gridLeft;x+=cellWidth+gap)canvas.drawCircle(x,y,dp(2),paint);}
+            if(getChildCount()==0){paint.setColor(GameUi.muted(night));paint.setTypeface(GameAssets.font(getContext()));paint.setTextSize(dp(16));paint.setTextAlign(Paint.Align.CENTER);String text=GameUi.tr("위젯을 추가해 나만의 화면을 만드세요","添加小组件，打造专属界面");float width=paint.measureText(text);if(width>getWidth()-dp(16))paint.setTextSize(paint.getTextSize()*(getWidth()-dp(16))/width);canvas.drawText(text,getWidth()/2f,dp(95),paint);}
         }
         @Override protected void dispatchDraw(Canvas canvas){
             super.dispatchDraw(canvas);if(!ghost)return;
             RectF target=new RectF(gridLeft+ghostX*(cellWidth+gap),rowTop(ghostY),gridLeft+ghostX*(cellWidth+gap)+ghostW*cellWidth+(ghostW-1)*gap,rowTop(ghostY)+ghostH*cellHeight+(ghostH-1)*gap);
-            paint.setStyle(Paint.Style.FILL);paint.setColor((valid?GameUi.BLUE:GameUi.ERROR)&0x00ffffff|0x22000000);canvas.drawRoundRect(target,dp(GameUi.RADIUS_DP),dp(GameUi.RADIUS_DP),paint);
-            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(dp(2));paint.setColor(valid?GameUi.BLUE:GameUi.ERROR);canvas.drawRoundRect(target,dp(18),dp(18),paint);paint.setStyle(Paint.Style.FILL);
+            int tone=valid?GameUi.accent(GameUi.night(getContext())):GameUi.ERROR;float radius=dp(GameUi.CARD_RADIUS_DP);
+            paint.setStyle(Paint.Style.FILL);paint.setColor(tone&0x00ffffff|0x22000000);canvas.drawRoundRect(target,radius,radius,paint);
+            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(dp(2));paint.setColor(tone);canvas.drawRoundRect(target,radius,radius,paint);paint.setStyle(Paint.Style.FILL);
         }
         void propose(int id,int x,int y,int w,int h,boolean resizing){
             ghost=true;ghostX=x;ghostY=y;ghostW=w;ghostH=h;
@@ -240,7 +248,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
         private void updateGesture(){
             DashboardLayout.Item item=layout.get(id);if(item==null)return;
             float dx=rawX-downX,dy=rawY-downY+scroll.getScrollY()-initialScroll;
-            setAlpha(.65f);setElevation(dp(6));
+            setAlpha(.9f);setScaleX(1.03f);setScaleY(1.03f);setElevation(dp(8));
             if(resizing){int[] size=DashboardLayout.nearestSize(item.type,item.w+dx/(board.cellWidth+board.gap),item.h+dy/(board.cellHeight+board.gap));board.propose(id,item.x,item.y,size[0],size[1],true);}
             else{int x=Math.max(0,Math.min(4-item.w,item.x+Math.round(dx/(board.cellWidth+board.gap))));int y=Math.max(0,Math.min(DashboardLayout.MAX_ROWS-item.h,item.y+Math.round(dy/(board.cellHeight+board.gap))));board.propose(id,x,y,item.w,item.h,false);setTranslationX(dx);setTranslationY(dy);}
         }
@@ -273,7 +281,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
                     if(dragging){boolean done=board.valid&&(resizing?layout.resizeAndPack(id,board.ghostW,board.ghostH):layout.move(id,board.ghostX,board.ghostY));if(!done)toast(GameUi.tr("빈칸에 놓거나 위젯 옵션에서 크기·순서를 바꿔 주세요","请放到空白处，或在选项中调整大小和顺序"));board.rebuild();}
                     else performClick();return true;
                 case MotionEvent.ACTION_CANCEL:
-                    removeCallbacks(edgeScroll);dragging=false;resizing=false;getParent().requestDisallowInterceptTouchEvent(false);setAlpha(1);setElevation(dp(1));setTranslationX(0);setTranslationY(0);board.ghost=false;board.invalidate();return true;
+                    removeCallbacks(edgeScroll);dragging=false;resizing=false;getParent().requestDisallowInterceptTouchEvent(false);setAlpha(1);setScaleX(1);setScaleY(1);setElevation(dp(1));setTranslationX(0);setTranslationY(0);board.ghost=false;board.invalidate();return true;
                 default:return true;
             }
         }
@@ -281,24 +289,16 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
         @Override protected void onDetachedFromWindow(){removeCallbacks(edgeScroll);super.onDetachedFromWindow();}
         @Override protected void dispatchDraw(Canvas canvas){
             super.dispatchDraw(canvas);if(!editing)return;
-            pen.setColor(GameUi.BLUE);pen.setStrokeWidth(dp(2));pen.setStrokeCap(Paint.Cap.ROUND);
+            int accent=GameUi.accent(GameUi.night(getContext()));
+            if(DashboardView.this.selected==id){
+                float inset=dp(1),radius=dp(GameUi.CARD_RADIUS_DP);
+                pen.setStyle(Paint.Style.STROKE);pen.setStrokeWidth(dp(2));pen.setColor(accent);
+                canvas.drawRoundRect(inset,inset,getWidth()-inset,getHeight()-inset,radius,radius,pen);
+            }
+            pen.setStyle(Paint.Style.FILL);pen.setColor(accent);pen.setStrokeWidth(dp(2));pen.setStrokeCap(Paint.Cap.ROUND);
             float r=getWidth()-dp(13),b=getHeight()-dp(13);canvas.drawLine(r-dp(13),b,r,b-dp(13),pen);canvas.drawLine(r-dp(6),b,r,b-dp(6),pen);
             for(int n=0;n<3;n++)canvas.drawCircle(getWidth()-dp(17),dp(12+n*5),dp(1.3f),pen);
             DashboardLayout.Item item=layout.get(id);if(item!=null){pen.setTypeface(GameAssets.font(getContext()));pen.setTextSize(dp(11));pen.setTextAlign(Paint.Align.RIGHT);canvas.drawText(item.w+"×"+item.h,getWidth()-dp(31),dp(24),pen);}
         }
-    }
-    /** Simple white cards with a quiet border and a clear selected state. */
-    private final class CardSkin extends Drawable {
-        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final int id;
-        CardSkin(int id){this.id=id;}
-        @Override public void draw(Canvas canvas){
-            boolean selected=editing&&DashboardView.this.selected==id;
-            Rect b=getBounds();float r=dp(GameUi.RADIUS_DP);p.setStyle(Paint.Style.FILL);p.setColor(GameUi.PAPER);
-            canvas.drawRoundRect(b.left,b.top,b.right,b.bottom,r,r,p);
-            p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(selected?2:1));p.setColor(selected?GameUi.BLUE:GameUi.LINE);
-            canvas.drawRoundRect(b.left+dp(1),b.top+dp(1),b.right-dp(1),b.bottom-dp(1),r,r,p);
-        }
-        @Override public void setAlpha(int a){} @Override public void setColorFilter(ColorFilter f){} @Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}
     }
 }

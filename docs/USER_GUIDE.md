@@ -1,6 +1,6 @@
 # User guide
 
-The current [1.1.0-rc5 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.1.0-rc5) supports KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The historical 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
+The current [1.2.0 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.0) supports KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The historical 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
 
 ## First connection
 
@@ -14,7 +14,7 @@ Use the draggable **Oniimai settings** shortcut inside the game for connection, 
 
 Connect an HDMI/DP monitor that Android exposes as a separate display, then select it and choose the rotation. A portrait game is rotated onto the external landscape surface. A wireless service exposing only a duplicate of the phone screen might not be selectable as a Presentation display.
 
-Edit dashboard widgets to change placement and size. After switching back to the phone, use the draggable external-output shortcut or display settings to return to the monitor. Actual modes and performance depend on the device, cable, adapter and monitor.
+Edit dashboard widgets to change placement and size. Use Save to apply changes; leaving a changed layout asks before discarding it. After switching back to the phone, use the draggable external-output shortcut or display settings to return to the monitor. Actual modes and performance depend on the device, cable, adapter and monitor.
 
 ## Cards
 
@@ -27,9 +27,9 @@ Edit dashboard widgets to change placement and size. After switching back to the
 
 ## License and source information
 
-Open **App settings → Licenses and sources** in the module launcher, or **Connection → Licenses and sources** inside the game's controller settings. The Korean label is translated by the current UI language. The menu explains the GPL offer, AI involvement and third-party notices; each bundled license can be read offline. Back returns to the notice list, then to the original settings screen.
+Open **App settings → Licenses and sources** in the module launcher, or **Connection → General → Licenses and sources** inside the game's controller settings. The Korean label is translated by the current UI language. The menu explains the GPL offer, AI involvement and third-party notices; each bundled license can be read offline. Back returns to the notice list, then to the original settings screen.
 
-The source action opens the project repository in a browser. If you do not have private repository access, use the matching Source ZIP supplied with the APK or request it from the distributor. The source package includes build instructions. The module license does not grant rights over the game, card services or product names.
+The source action opens the public project repository in a browser. The matching Source ZIP is also supplied with the APK. The source package includes build instructions. The module license does not grant rights over the game, card services or product names.
 
 ## Troubleshooting
 
