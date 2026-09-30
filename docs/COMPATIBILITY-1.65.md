@@ -2,7 +2,7 @@
 
 **Module 1.1.0-rc5** adds the exact **KanadeDX-260721.1649 (1.65)** native build and retains **KanadeDX-260207.0635 (1.60)**. The previously published 1.0.0 APK does not support 1.65. This is a module update; it does not contain or replace the game.
 
-The [1.2.0 UI release](RELEASE-1.2.0.md) retains these profiles and fixes. The rc3–rc5 observations below remain historical device results, not a fresh 1.2.0 hardware test.
+The [1.2.1 UI release](RELEASE-1.2.1.md) retains these profiles and fixes. The rc3–rc5 observations below remain historical device results, not a fresh 1.2.1 hardware test.
 
 ## What changed
 
@@ -105,7 +105,7 @@ game builds.
 
 ## Update
 
-Install the current `Oniimai-Kanade-API102-1.2.0.apk`, keep the module scoped to `app.KanadeDX` in API 102-capable LSPosed, and fully stop/restart the game. Existing controller and dashboard preferences remain in place. Do not clear game data or reflash controller firmware for this update.
+Install the current `Oniimai-Kanade-API102-1.2.1.apk`, keep the module scoped to `app.KanadeDX` in API 102-capable LSPosed, and fully stop/restart the game. Existing controller and dashboard preferences remain in place. Do not clear game data or reflash controller firmware for this update.
 
 If building from source, follow [Build](BUILD.md). Use the same signing key as an installed module when updating it. The 1.0.0 GitHub release and its files remain historical 1.60 artifacts.
 

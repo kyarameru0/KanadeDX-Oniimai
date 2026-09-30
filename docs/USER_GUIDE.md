@@ -1,6 +1,6 @@
 # User guide
 
-The current [1.2.0 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.0) supports KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The historical 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
+The current [1.2.1 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.1) supports KanadeDX-260721.1649 (1.65) and preserves the 260207.0635 (1.60) profile. The historical 1.0.0 APK supports only 1.60. See [compatibility and update instructions](COMPATIBILITY-1.65.md).
 
 ## First connection
 

@@ -205,7 +205,7 @@ The UI has three separate responsibilities:
 
 1. [DashboardLayout.java](../app/src/main/java/io/oniimai/kanade/DashboardLayout.java) stores logical grid positions/sizes and validates arrangements.
 2. [DashboardView.java](../app/src/main/java/io/oniimai/kanade/DashboardView.java) hosts scrolling, editing, save/draft behavior and visible refreshes.
-3. [NativeDashboard.kt](../app/src/main/java/io/oniimai/kanade/NativeDashboard.kt) draws widget contents using Compose/Miuix and shared [OniTheme.kt](../app/src/main/java/io/oniimai/kanade/OniTheme.kt) tokens.
+3. [NativeDashboard.kt](../app/src/main/java/io/oniimai/kanade/NativeDashboard.kt) adapts Android state and the live sensor view; [OniScreens.kt](../app/src/main/java/io/oniimai/kanade/OniScreens.kt) draws widget contents using Compose/Miuix and shared [OniTheme.kt](../app/src/main/java/io/oniimai/kanade/OniTheme.kt) tokens.
 
 The native statistics adapter copies data while game objects are valid. `NativeBridge.gameplayStats()` returns copied JSON; a widget does not call a Unity method. Examples of current fields are `title`, `level`, `achievement`, `combo`, `critical`, `fast`, `result` and `scene`. Some unavailable values are omitted, so absence must not automatically be displayed as a measured zero.
 
@@ -213,7 +213,7 @@ Visible dashboard refreshes are scheduled about every 150 ms. That is appropriat
 
 Result retention is owned by [gameplay_stats.h](../app/src/main/cpp/gameplay_stats.h) and [stats_state.h](../app/src/main/cpp/stats_state.h): finished statistics survive the transition into Result, and leaving Result clears them. A 30-second fallback prevents an abandoned transition from retaining data forever. A new widget should use this state instead of starting its own result-reset timer.
 
-To add a widget, update the recognized types/defaults in `DashboardLayout`, the type/title choices in `DashboardView`, and the renderer in `NativeDashboard`. Check both 2×2 and 4×2 where supported, long titles, font scaling, dark mode and unavailable data. Saving should commit the editing draft; merely dragging must not overwrite the saved arrangement.
+To add a widget, update the recognized types/defaults in `DashboardLayout`, the type/title choices in `DashboardView`, and the renderer in `OniScreens`. Update `NativeDashboard` when Android-specific state or views are needed. Check both 2×2 and 4×2 where supported, long titles, font scaling, dark mode and unavailable data. Saving should commit the editing draft; merely dragging must not overwrite the saved arrangement.
 
 Grid dimensions count logical cells, not pixels. The board has four columns. From `DashboardLayout.defaults()`:
 
@@ -233,7 +233,7 @@ Current size choices are:
 
 Keep `sizes()`, `validSize()` and the picker in agreement. The parser also retires the old progress/density widget while keeping the remaining saved board. Reusing its old `graph` identifier for a new widget would collide with that migration.
 
-For settings, `GameSession.nativeSettings()` supplies groups/actions, `NativeSettings` models them, and `NativeUi` renders them. Store durable choices through the existing preferences and rebuild only the required views. Use shared spacing, typography, colors and transitions; do not create a separate theme per page. Korean/Chinese strings go through the existing locale mechanism and `check_locales.py`.
+For settings, `GameSession.nativeSettings()` supplies groups/actions, `NativeSettings` models them, and `NativeUi` owns the dialogs and preferences, and `SettingsScreen` in `OniScreens` renders them. Use `Group.status(text, tone)` for live status and `Group.note(text)` for explanations. Store durable choices through the existing preferences and rebuild only the required views. Use shared spacing, typography, colors and transitions; do not create a separate theme per page. Korean/Chinese strings go through the existing locale mechanism and `check_locales.py`.
 
 For a small first UI change, inspect `OniTokens` in `OniTheme.kt`: `inset` is the shared outer padding, `gap` is the common gap, and `caption` is the small-text size. Follow their usages before editing a value, since changing a shared token affects several screens. To fix one clipped label, first check that label's bounds and wrapping rather than shrinking every font. Verify both app languages and a larger Android font scale on-device.
 
@@ -257,7 +257,7 @@ When adding a dependency, update notices and the inventory first, then the viewe
 | Sensor picture is wrong | `SensorBoard`; keep input parsing separate | Label/shape comparison and live diagnostics |
 | Statistics vanish in Result | `GameplayStats`, `StatsLifecycle` | Game → loading → Result → exit, plus abort/retry |
 | External output stutters or has wrong rotation | `DisplayOutput`, `DisplayGeometry` | Actual active display mode, direct/fallback route and frame timings |
-| UI spacing or text clipping | `OniTheme`, `NativeDashboard`, widget bounds | Small screen, 2×2 tiles, font scale and both languages |
+| UI spacing or text clipping | `OniTheme`, `OniScreens`, widget bounds | Small screen, 2×2 tiles, font scale and both languages |
 | New game version | Target JSON manifests, `target_build.h`, per-build headers, affected native adapters | Verify exact method signatures, field layouts and interior guards, then both old/new APKs and feature-by-feature device checks |
 
 ## Match the change to an existing test

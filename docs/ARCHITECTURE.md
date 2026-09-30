@@ -18,7 +18,7 @@ New to the codebase? Read the [step-by-step developer guide](DEVELOPER_GUIDE.md)
 | Phone cards | [PhoneNfcReader](../app/src/main/java/io/oniimai/kanade/PhoneNfcReader.java), [PhoneNfcService](../app/src/main/java/io/oniimai/kanade/PhoneNfcService.java), [PhoneScan](../app/src/main/java/io/oniimai/kanade/PhoneScan.java) | In-game ReaderMode and stale-result rejection |
 | Lighting | [LedOutput](../app/src/main/java/io/oniimai/kanade/LedOutput.java), [CeilingOutput](../app/src/main/java/io/oniimai/kanade/CeilingOutput.java) | Independent output workers and rate/duplicate control |
 | Display | [DisplayOutput](../app/src/main/java/io/oniimai/kanade/DisplayOutput.java), [DisplayGeometry](../app/src/main/java/io/oniimai/kanade/DisplayGeometry.java) | Presentation, rotation, direct surface and fallback |
-| UI | [NativeUi.kt](../app/src/main/java/io/oniimai/kanade/NativeUi.kt), [NativeDashboard.kt](../app/src/main/java/io/oniimai/kanade/NativeDashboard.kt), [OniTheme.kt](../app/src/main/java/io/oniimai/kanade/OniTheme.kt) | Compose/Miuix screens, widget state and shared design tokens |
+| UI | [OniScreens.kt](../app/src/main/java/io/oniimai/kanade/OniScreens.kt), [NativeUi.kt](../app/src/main/java/io/oniimai/kanade/NativeUi.kt), [NativeDashboard.kt](../app/src/main/java/io/oniimai/kanade/NativeDashboard.kt), [OniTheme.kt](../app/src/main/java/io/oniimai/kanade/OniTheme.kt) | Compose/Miuix screens, widget state and shared design tokens |
 
 ## Thread and ownership boundaries
 
@@ -141,7 +141,7 @@ flowchart LR
 
 `DisplayOutput` creates a separate Presentation at the monitor's landscape bounds, applies a rotation/fit transform, and attaches Unity's surface. `SurfaceControl` is preferred to avoid the extra TextureView composition path; fallback remains available. Surface attach/detach ordering and restoring the phone view matter during disconnects.
 
-The phone renders statistics, not a second independent game. `NativeDashboard` consumes snapshots and preserves result data according to game state. Shared design tokens live in `OniTheme`; settings and widgets should not invent screen-specific spacing or typography.
+The phone renders statistics, not a second independent game. `NativeDashboard` adapts Android snapshots and artwork into `WidgetState`; `OniScreens` renders the shared Compose content. The Android dashboard host retains result data according to game state. `NativeUi` and `LicenseUi` continue to own dialogs and Android actions. Shared design tokens live in `OniTheme`; settings and widgets should not invent screen-specific spacing or typography.
 
 ## Extension checklist
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1 — 2026-10-01
+
+- Dedicated game-launch action in the home summary card.
+- Tinted live-status panels for controller, card readers, external output and lighting.
+- Compact dashboard actions, improved song text space, narrow device rows and a larger wide clock.
+- Shared screen content extracted into `OniScreens.kt`, retaining Android callbacks and preferences.
+- Light/dark UI preview gallery included in documentation and release notes.
+- Version code 38 with the existing signing identity and runtime dependencies.
+
+See [release notes](docs/RELEASE-1.2.1.md) for images, downloads and validation limits.
+
 ## 1.2.0 — 2026-09-29
 
 Refined Miuix settings and dashboard, retaining the 1.60/1.65 native profiles.

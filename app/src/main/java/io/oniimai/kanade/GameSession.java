@@ -316,7 +316,7 @@ final class GameSession implements DashboardHost {
     private TextView settingRow(LinearLayout group,String title,String value,Runnable action){return GameUi.row(group,title,value,action);}
     private void renderConnectionTab(){
         NativeSettings.Group input=settingsGroup(tr("컨트롤러 연결","控制器连接"));
-        input.note(connectionDescription());
+        input.status(connectionDescription(),connected?NativeSettings.OK:NativeSettings.WAIT);
         input.toggle(tr("컨트롤러 입력","控制器输入"),tr("설정창을 닫고 손을 떼면 게임에 입력합니다.","关闭设置并松手后向游戏传送输入。"),inputRequested,value->{
             if(value!=inputRequested)toggleArm();
         });
@@ -330,6 +330,7 @@ final class GameSession implements DashboardHost {
             choose(tr("터치 프로토콜","触摸协议"),new String[]{"Touch Serial · 9600","Command · 115200"},commandMode?1:0,n->{commandMode=n==1;touchPort="";prefs.edit().putBoolean("touch_command",commandMode).remove("touch_identity").apply();renderTab();scan();});
         });
         NativeSettings.Group cards=settingsGroup(tr("Aime 카드 리더","Aime 读卡器"));
+        cards.status(aimeDescription(),!aimeEnabled?NativeSettings.INFO:aimeReader.running()?NativeSettings.OK:NativeSettings.WAIT);
         cards.toggle(tr("Aime 카드 인식","读取 Aime 卡"),tr("게임의 카드 인식 화면에서 사용합니다.","在游戏读卡画面中使用。"),aimeEnabled,value->{
             aimeEnabled=value;prefs.edit().putBoolean("aime_enabled",value).apply();allowAime(false);
             if(value){if(aimePort.isEmpty())scan();else startAime();}else aimeReader.stop();
@@ -343,13 +344,12 @@ final class GameSession implements DashboardHost {
         cards.toggle(tr("카드 리더 LED","读卡器 LED"),tr("게임의 대기·성공·오류 상태를 표시합니다.","显示游戏的等待读卡、成功和错误状态。"),prefs.getBoolean("aime_led_enabled",true),value->{
             prefs.edit().putBoolean("aime_led_enabled",value).apply();aimeReader.led(value);
         });
-        cards.note(aimeDescription());
         cards.note(tr("카드를 읽은 뒤에는 리더에서 떼어 주세요. 카드 번호는 설정이나 진단 기록에 저장하지 않습니다.","读取后请将卡片移开。卡号不会保存到设置或诊断记录中。"));
         NativeSettings.Group phoneCard=settingsGroup(tr("폰 NFC 리더","手机 NFC 读卡器"));
         phoneCard.toggle(tr("폰 NFC 자동 인식","手机 NFC 自动读卡"),tr("게임 화면에서 폰 뒷면에 바로 카드를 댑니다","在游戏画面中直接将卡片靠近手机背面"),prefs.getBoolean("phone_nfc_enabled",true),value->{
             prefs.edit().putBoolean("phone_nfc_enabled",value).apply();if(!value)phoneNfc.pause();
         });
-        phoneCard.note(phoneNfc.summary());
+        phoneCard.status(phoneNfc.summary(),NativeSettings.INFO);
         phoneCard.note(tr("컨트롤러 리더와 함께 사용할 수 있습니다. MIFARE는 폰 NFC 칩의 지원이 필요합니다.","可与控制器读卡器同时使用。MIFARE 需要手机 NFC 芯片支持。"));
         NativeSettings.Group devices=settingsGroup(tr("USB 장치","USB 设备"));
         devices.row(UiText.t("USB 기기 찾기"),tr("이름으로 포트 자동 선택","按名称自动选择端口"),this::scan);
@@ -365,7 +365,7 @@ final class GameSession implements DashboardHost {
     }
     private void renderDisplayTab(){
         NativeSettings.Group output=settingsGroup(UiText.t("외부 디스플레이"));
-        output.note(displayOutput.summary());
+        output.status(displayOutput.summary(),externalActive()?NativeSettings.OK:NativeSettings.INFO);
         output.toggle(tr("외부 화면으로 게임 출력","向外接屏幕输出游戏"),tr("모니터 연결 시 자동 출력","连接显示器时自动输出"),prefs.getBoolean("external_enabled",true),value->{
             if(syncingExternalToggle)return;
             if(value)displayOutput.enable();else displayOutput.stop(UiText.t("휴대폰 화면으로 돌아왔습니다."));
@@ -417,7 +417,7 @@ final class GameSession implements DashboardHost {
     }
     private void renderLedTab(){
         NativeSettings.Group link=settingsGroup(UiText.t("게임 LED 연동"));
-        link.note(ledDescription());
+        link.status(ledDescription(),!ledEnabled?NativeSettings.INFO:ledOutput.running()?NativeSettings.OK:NativeSettings.WAIT);
         link.toggle(tr("LED 연동","LED 联动"),tr("Virtual Keyboard를 켜지 않아도 작동합니다.","无需开启 Virtual Keyboard。"),ledEnabled,value->{
             ledEnabled=value;saveLedSettings();if(value){startLeds();if(ledCeiling&&hid==null){if(connected)disconnect(false);ui.postDelayed(this::scan,500);}}else ledOutput.stop();
         });

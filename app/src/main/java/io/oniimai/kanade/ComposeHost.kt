@@ -9,6 +9,8 @@ import android.content.res.Configuration
 import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
@@ -32,7 +34,7 @@ internal class ComposeHost(activity: Activity, content: @Composable () -> Unit) 
         setViewTreeViewModelStoreOwner(this)
         compose = ComposeView(moduleContext(activity)).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-            setContent { OniTheme(content) }
+            setContent { OniTheme(remember { FontFamily(GameAssets.regular(activity)) }, content) }
         }
         addView(compose, LayoutParams(-1, -1))
     }

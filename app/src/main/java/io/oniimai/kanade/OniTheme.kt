@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -45,6 +44,7 @@ object OniTokens {
     val cardRadius = 16.dp
     val shortcutWidth = 116.dp
     val shortcutHeight = 36.dp
+    val headerAction = 36.dp
     /** Large-title and section-title start edge: card margin (16) + row inset (16). */
     val titleInset = 32.dp
     val stepHeight = 4.dp
@@ -66,19 +66,19 @@ object OniTokens {
     val metricSmall = 20.sp
     val metricMinimum = 16.sp
     val displayMetric = 32.sp
+    val clock = 48.sp
     const val motion = 180
 }
 internal fun tr(ko: String, zh: String) = GameUi.tr(ko, zh)
 /** Validation/error text; the same red the Android-View helpers use. */
 internal val ERROR_TEXT = androidx.compose.ui.graphics.Color(GameUi.ERROR)
 
+/** [family] is the system MiSans family on device; null keeps the platform default (desktop preview). */
 @Composable
-internal fun OniTheme(content: @Composable () -> Unit) {
-    val context = LocalContext.current
-    val family = remember { FontFamily(GameAssets.regular(context)) }
+internal fun OniTheme(family: FontFamily? = null, content: @Composable () -> Unit) {
     val base = remember { defaultTextStyles() }
     val styles = remember(family) {
-        fun TextStyle.native() = copy(fontFamily = family)
+        fun TextStyle.native() = if (family == null) this else copy(fontFamily = family)
         defaultTextStyles(base.main.native(), base.paragraph.native(), base.body1.native(),
             base.body2.native(), base.button.native(), base.footnote1.native(), base.footnote2.native(),
             base.headline1.native(), base.headline2.native(), base.subtitle.native(),
@@ -115,6 +115,15 @@ internal fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     IconButton(onClick = onClick, modifier = modifier.padding(start = OniTokens.gap).semantics { contentDescription = tr("뒤로", "返回") }) {
         Icon(MiuixIcons.Useful.Back, contentDescription = null, tint = MiuixTheme.colorScheme.onBackground)
     }
+}
+
+/** Small pill action for a page header: tinted when it is the page's main action, quiet otherwise. */
+@Composable
+internal fun HeaderAction(label: String, primary: Boolean, onClick: () -> Unit) {
+    TextButton(text = label, onClick = onClick, minHeight = OniTokens.headerAction, cornerRadius = OniTokens.headerAction / 2,
+        insideMargin = PaddingValues(horizontal = OniTokens.inset, vertical = 0.dp),
+        colors = if (primary) ButtonDefaults.textButtonColorsPrimary()
+            else ButtonDefaults.textButtonColors(color = MiuixTheme.colorScheme.tertiaryContainer, textColor = MiuixTheme.colorScheme.onTertiaryContainer))
 }
 
 /** Compact, non-collapsing header for Android-View hosts such as the dashboard board. */
@@ -216,21 +225,34 @@ internal fun BrandMark(size: androidx.compose.ui.unit.Dp, ring: Color = Color.Wh
     }
 }
 
-/** Gradient header card for the module home, in the manner of HyperOS "About phone". */
+/**
+ * Gradient header card for the module home, in the manner of HyperOS "About phone".
+ * [action] puts the page's main task inside the hero as a solid white button, so it is the first thing a thumb finds.
+ */
 @Composable
-internal fun HeroCard(title: String, subtitle: String, badges: List<String>) {
+internal fun HeroCard(title: String, subtitle: String, badges: List<String>, action: String? = null, onAction: () -> Unit = {}) {
     val dark = isSystemInDarkTheme()
     val brush = Brush.linearGradient(if (dark) listOf(Color(0xFF1D4FA8), Color(0xFF2B6FE0)) else listOf(Color(0xFF2F7BFF), Color(0xFF6AA8FF)))
-    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(OniTokens.heroRadius)).background(brush).padding(OniTokens.section)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OniTokens.inset)) {
-            BrandMark(OniTokens.heroMark, background = Color.White.copy(alpha = 0.18f))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(OniTokens.space / 2)) {
-                Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
-                Text(subtitle, color = Color.White.copy(alpha = 0.82f), fontSize = OniTokens.caption, maxLines = 2)
-                Spacer(Modifier.height(OniTokens.space / 2))
-                Row(horizontalArrangement = Arrangement.spacedBy(OniTokens.space / 2)) {
-                    badges.forEach { Pill(it, color = Color.White, background = Color.White.copy(alpha = 0.2f)) }
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(OniTokens.heroRadius)).background(brush)) {
+        // Two faint concentric rings echo the controller's touch ring without any game artwork.
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 56.dp, y = (-64).dp).size(200.dp).clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.07f)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(120.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.07f)))
+        }
+        Column(Modifier.padding(OniTokens.section), verticalArrangement = Arrangement.spacedBy(OniTokens.inset)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OniTokens.inset)) {
+                BrandMark(OniTokens.heroMark, background = Color.White.copy(alpha = 0.18f))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(OniTokens.space / 2)) {
+                    Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                    Text(subtitle, color = Color.White.copy(alpha = 0.85f), fontSize = OniTokens.caption, maxLines = 3)
                 }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(OniTokens.space / 2)) {
+                badges.forEach { Pill(it, color = Color.White, background = Color.White.copy(alpha = 0.2f)) }
+            }
+            if (action != null) Button(onClick = onAction, modifier = Modifier.fillMaxWidth(), minHeight = OniTokens.target,
+                cornerRadius = OniTokens.compactRadius + 4.dp, colors = ButtonDefaults.buttonColors(color = Color.White)) {
+                Text(action, color = if (dark) Color(0xFF1D4FA8) else Color(0xFF1F6BFF), fontSize = OniTokens.body, fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
         }
     }
@@ -299,6 +321,30 @@ internal fun InfoPanel(lines: List<String>) {
                 if (i == 0) Text(line, fontSize = OniTokens.rowLabel, fontWeight = FontWeight.Medium, color = colors.onSurface)
                 else Text(line, fontSize = OniTokens.caption, color = colors.onSurfaceSecondary)
             }
+        }
+    }
+}
+
+/**
+ * Live status at the top of a settings card. The tone picks the tint and the leading dot:
+ * green when working, amber while waiting or failing, the neutral info tint otherwise.
+ * The first line of [text] is the headline; any further lines are details.
+ */
+@Composable
+internal fun StatusPanel(text: String, tone: Int) {
+    val colors = MiuixTheme.colorScheme
+    val dark = isSystemInDarkTheme()
+    val accent = when (tone) { NativeSettings.OK -> IconTint.green; NativeSettings.WAIT -> IconTint.orange; else -> colors.primary }
+    val tint = if (tone == NativeSettings.OK || tone == NativeSettings.WAIT) accent.copy(alpha = if (dark) 0.18f else 0.11f) else colors.tertiaryContainer
+    val lines = text.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+    if (lines.isEmpty()) return
+    Row(Modifier.fillMaxWidth().padding(start = OniTokens.gap, end = OniTokens.gap, top = OniTokens.gap)
+            .clip(RoundedCornerShape(OniTokens.compactRadius)).background(tint).padding(horizontal = OniTokens.gap, vertical = OniTokens.gap - 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(OniTokens.gap)) {
+        Box(Modifier.padding(top = 5.dp).size(8.dp).clip(CircleShape).background(accent))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(lines[0], fontSize = OniTokens.rowLabel, fontWeight = FontWeight.Medium, color = colors.onSurface)
+            lines.drop(1).forEach { Text(it, fontSize = OniTokens.caption, color = colors.onSurfaceSecondary) }
         }
     }
 }

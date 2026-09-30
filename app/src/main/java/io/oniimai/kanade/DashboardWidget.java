@@ -12,6 +12,6 @@ final class DashboardWidget extends FrameLayout {
         super(context);this.host=host;this.type=type;
         addView(NativeDashboard.widget(host.activity(),type,host,state),new LayoutParams(-1,-1));
     }
-    void setGridSize(int width,int height){state.setWidth(width);}
-    void update(JSONObject frame,boolean stale,Bitmap cover){state.update(frame,stale,cover,host,type);}
+    void setGridSize(int width,int height){state.setWidth(width);state.setHeight(height);}
+    void update(JSONObject frame,boolean stale,Bitmap cover){NativeDashboard.update(state,frame,stale,cover,host,type);}
 }

@@ -1,4 +1,4 @@
-# UI changes in 1.2.0
+# UI changes
 
 The settings and phone dashboard use the existing Kotlin, Jetpack Compose and
 Miuix stack. Shared colors, spacing, typography and reusable components remain
@@ -36,6 +36,25 @@ refinement into the working module while retaining existing control callbacks.
 USB/NFC transport, native hooks and supported game-build profiles are unchanged
 from the preceding source baseline.
 
-See [release notes](docs/RELEASE-1.2.0.md) for downloads and validation limits.
+See [current release notes](docs/RELEASE-1.2.1.md) for downloads and validation limits.
 Host checks and compilation do not establish on-device appearance or physical
 controller behavior.
+
+## 1.2.1 follow-up
+
+- Home: **Open KanadeDX** is now the hero card's own white button instead of a list
+  row; the hero gains faint concentric rings.
+- Settings: live states (controller, Aime reader, phone NFC, external display, LED)
+  sit at the top of their card as a tinted status panel: green when working, amber
+  while waiting, neutral otherwise. Aime and phone-NFC status no longer hide among
+  the footnotes. `NativeSettings.Group.status(text, tone)` carries the tone.
+- Dashboard: compact pill header action (Edit/Save); song widget no longer clips the
+  artist line; device widget shows a coloured dot per line and one-line headlines in
+  narrow tiles; the wide clock uses a larger time with date and weekday.
+- Screens moved into `OniScreens.kt` (no Activity, Bitmap or View types), so they can
+  be rendered off-device. `NativeUi.kt`, `NativeDashboard.kt` and `LicenseUi.kt` keep
+  the dialog, preference and session glue. Callbacks and stored keys are unchanged.
+
+The [preview gallery](docs/UI-PREVIEWS.md) contains the supplied desktop renders
+used to illustrate this update. They use sample data and a sensor placeholder;
+the Android adapter still renders `SensorBoard` with live input.
