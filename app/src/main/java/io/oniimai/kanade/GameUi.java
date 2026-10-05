@@ -22,7 +22,6 @@ final class GameUi {
     static final int DAY_ACCENT=0xff3482ff, NIGHT_ACCENT=0xff277af7, NIGHT_LINE=0xff393939, DAY_LINE=0xffe0e0e0,
             NIGHT_MUTED=0xff8c8c8c, NIGHT_PALE=0xff383838;
     private GameUi() {}
-    static String tr(String ko,String zh) { return "zh-Hans".equals(UiText.language())?zh:ko; }
     static boolean night(Context c){return (c.getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES;}
     static int accent(boolean night){return night?NIGHT_ACCENT:DAY_ACCENT;}
     static int line(boolean night){return night?NIGHT_LINE:DAY_LINE;}
@@ -97,7 +96,7 @@ final class GameUi {
     }
     static int readNumber(EditText field,int min,int max) {
         try { int v=Integer.parseInt(field.getText().toString().trim()); if(v<min||v>max)throw new NumberFormatException(); field.setError(null); return v; }
-        catch(NumberFormatException e){field.setError(tr("입력 범위: ","输入范围：")+min+"–"+max); field.requestFocus(); throw e;}
+        catch(NumberFormatException e){field.setError(I18n.t(Msg.NUMBER_RANGE_ERROR,min,max)); field.requestFocus(); throw e;}
     }
     /** Compatibility name: this is a plain background with no game motifs or artwork. */
     static final class Pattern extends ColorDrawable {

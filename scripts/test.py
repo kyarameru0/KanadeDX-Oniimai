@@ -3,12 +3,12 @@ from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--build-dir',required=True);p.add_argument('--ndk');a=p.parse_args()
 root=Path(__file__).resolve().parents[1];out=Path(a.build_dir).resolve();out.mkdir(parents=True,exist_ok=True)
 java=root/'app/src/main/java/io/oniimai/kanade'
-sources=[java/(name+'.java') for name in ['Protocol','PortSelection','FirmwareInfo','SetupDefaults','Io4Input','Io4Output','CommandChannel','ControllerInput','KeyboardState','DashboardLayout','DisplayGeometry','LedChannel','LedFrames','LedOutput','CeilingOutput','AimeProtocol','AimeTrace','AimeChannel','AimeFelica','AimePresence','AimeReader','UiText','UiTextCatalog','UnityStartup']]
+sources=[java/(name+'.java') for name in ['Protocol','PortSelection','FirmwareInfo','SetupDefaults','Io4Input','Io4Output','CommandChannel','ControllerInput','KeyboardState','DashboardLayout','DisplayGeometry','LedChannel','LedFrames','LobbyLights','LedOutput','CeilingOutput','AimeProtocol','AimeTrace','AimeChannel','AimeFelica','AimePresence','AimeReader','I18n','I18nCatalog','Msg','UnityStartup','InitialSetupGate','OutputGate','DisplayTimeline','SetupLink','SetupLights']]
 sources += [java/'PhoneCardReader.java',java/'PhoneScan.java']
 sources += [java/'LicenseText.java']
 sources+=sorted((root/'tests').rglob('*.java'))
 subprocess.run(['javac','--release','8','-encoding','UTF-8','-d',str(out),*map(str,sources)],check=True)
-for name in ['ProtocolTest','Io4OutputTest','HardwareSelectionTest','FirmwareInfoTest','ChannelTest','ControllerInputTest','KeyboardStateTest','DashboardLayoutTest','DisplayGeometryTest','LedTest','LedOutputTest','CeilingOutputTest','AimeProtocolTest','AimeTraceTest','AimeChannelTest','AimePresenceTest','AimeReaderTest','PhoneNfcTest','UiTextTest','UnityStartupTest','LicenseTextTest']:
+for name in ['ProtocolTest','Io4OutputTest','HardwareSelectionTest','FirmwareInfoTest','ChannelTest','ControllerInputTest','KeyboardStateTest','DashboardLayoutTest','DisplayGeometryTest','LedTest','LedOutputTest','LobbyLightsTest','CeilingOutputTest','AimeProtocolTest','AimeTraceTest','AimeChannelTest','AimePresenceTest','AimeReaderTest','PhoneNfcTest','I18nTest','UnityStartupTest','InitialSetupGateTest','OutputGateTest','SetupLinkTest','SetupLightsTest','LicenseTextTest']:
     subprocess.run(['java','-cp',str(out),'io.oniimai.kanade.'+name],check=True)
 if a.ndk:
     llvm=Path(a.ndk).resolve()/'toolchains/llvm/prebuilt'/('windows-x86_64' if os.name=='nt' else 'linux-x86_64')/'bin'

@@ -1,6 +1,8 @@
+diff --git a/app/src/main/java/io/oniimai/kanade/DashboardLayout.java b/app/src/main/java/io/oniimai/kanade/DashboardLayout.java
+index 664ba60..fa65606 100644
 --- a/app/src/main/java/io/oniimai/kanade/DashboardLayout.java
 +++ b/app/src/main/java/io/oniimai/kanade/DashboardLayout.java
-@@ -12,11 +12,11 @@
+@@ -12,11 +12,11 @@ final class DashboardLayout {
      static final int MAX_ITEMS = 20;
      static final String SONG = "song", SCORE = "score", JUDGMENTS = "judgments",
              TIMING = "timing", SENSORS = "sensors",
@@ -14,9 +16,11 @@
  
      static final class Item {
          final int id, x, y, w, h;
+diff --git a/app/src/main/java/io/oniimai/kanade/DashboardView.java b/app/src/main/java/io/oniimai/kanade/DashboardView.java
+index 32e1ad1..2f51952 100644
 --- a/app/src/main/java/io/oniimai/kanade/DashboardView.java
 +++ b/app/src/main/java/io/oniimai/kanade/DashboardView.java
-@@ -12,7 +12,7 @@
+@@ -12,7 +12,7 @@ import org.json.JSONObject;
  final class DashboardView extends LinearLayout implements SharedPreferences.OnSharedPreferenceChangeListener {
      static final String KEY = "dashboardLayoutV1";
      private static final String DRAFT_KEY = KEY + "Draft";
@@ -25,38 +29,47 @@
      private final DashboardHost host;
      private final boolean preview;
      private final Runnable close;
-@@ -76,6 +76,7 @@
+@@ -76,6 +76,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
          case "timing":return "FAST / LATE";
-         case "sensors":return GameUi.tr("터치 · 버튼","触摸 · 按钮");
-         case "connection":return GameUi.tr("장치 상태","设备状态");
+         case "sensors":return I18n.t(Msg.WIDGET_SENSORS_TITLE);
+         case "connection":return I18n.t(Msg.WIDGET_CONNECTION_TITLE);
 +        case "p1":return "P1 / START";
-         default:return GameUi.tr("시계","时钟");
+         default:return I18n.t(Msg.WIDGET_CLOCK_TITLE);
      }}
      private static String description(String type){switch(type){
-@@ -85,6 +86,7 @@
-         case "timing":return GameUi.tr("빠른 판정과 늦은 판정 비교","比较偏快和偏慢的判定");
-         case "sensors":return GameUi.tr("실제 34개 터치 영역과 버튼 입력","34 个真实触摸区和按钮状态");
-         case "connection":return GameUi.tr("USB 입력, LED와 외부 화면 상태","USB 输入、LED 和外接屏幕状态");
-+        case "p1":return GameUi.tr("P1 버튼의 현재 상태","P1 按钮当前状态");
-         default:return GameUi.tr("현재 시간과 날짜","当前时间和日期");
+@@ -85,6 +86,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
+         case "timing":return I18n.t(Msg.WIDGET_TIMING_DESCRIPTION);
+         case "sensors":return I18n.t(Msg.WIDGET_SENSORS_DESCRIPTION);
+         case "connection":return I18n.t(Msg.WIDGET_CONNECTION_DESCRIPTION);
++        case "p1":return I18n.t(Msg.WIDGET_P1_DESCRIPTION);
+         default:return I18n.t(Msg.WIDGET_CLOCK_DESCRIPTION);
      }}
      private void chrome(){
+diff --git a/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt b/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
+index 8f80aff..955a013 100644
 --- a/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
 +++ b/app/src/main/java/io/oniimai/kanade/NativeDashboard.kt
-@@ -39,10 +39,12 @@
-     var led by mutableStateOf("")
-     var output by mutableStateOf("")
+@@ -39,6 +39,7 @@ internal object NativeDashboard {
+             state.inputTone = host.inputTone(); state.ledTone = host.ledTone(); state.outputTone = host.displayTone()
+         }
+         if (type == "sensors") { val d = host.diagnostic(); state.sensors = "T ${java.lang.Long.bitCount(d[1])}/34   B ${Integer.bitCount(d[0].toInt() and 255)}/8   P1 ${if (d[0] and 256L != 0L) "ON" else "OFF"}" }
++        if (type == "p1") state.p1 = host.diagnostic()[0] and 256L != 0L
+         if (type == "clock") { state.minute = System.currentTimeMillis() / 60000; state.is24Hour = android.text.format.DateFormat.is24HourFormat(host.activity()) }
+     }
+ }
+diff --git a/app/src/main/java/io/oniimai/kanade/OniScreens.kt b/app/src/main/java/io/oniimai/kanade/OniScreens.kt
+index 29996bb..91f2288 100644
+--- a/app/src/main/java/io/oniimai/kanade/OniScreens.kt
++++ b/app/src/main/java/io/oniimai/kanade/OniScreens.kt
+@@ -354,6 +354,7 @@ internal class WidgetState {
+     var ledTone by mutableIntStateOf(NativeSettings.NONE)
+     var outputTone by mutableIntStateOf(NativeSettings.NONE)
      var sensors by mutableStateOf("")
 +    var p1 by mutableStateOf(false)
      var minute by mutableLongStateOf(0)
+     var is24Hour by mutableStateOf(true)
      var width by mutableIntStateOf(2)
-     fun update(frame: JSONObject, stale: Boolean, cover: Bitmap?, host: DashboardHost, type: String) {
-         this.frame = frame; this.stale = stale; this.cover = cover
-+        if (type == "p1") p1 = host.diagnostic()[0] and 256L != 0L
-         if (type == "connection") { input = host.connectionDescription(); led = host.ledDescription(); output = host.displayDescription() }
-         if (type == "sensors") { val d = host.diagnostic(); sensors = "T ${java.lang.Long.bitCount(d[1])}/34   B ${Integer.bitCount(d[0].toInt() and 255)}/8   P1 ${if (d[0] and 256L != 0L) "ON" else "OFF"}" }
-         if (type == "clock") minute = System.currentTimeMillis() / 60000
-@@ -82,6 +84,11 @@
+@@ -380,6 +381,11 @@ internal class WidgetState {
      val live = !state.stale && data.optBoolean("game", false)
      fun number(key: String) = if (live) data.optLong(key).toString() else "—"
      when (type) {
@@ -67,10 +80,48 @@
 +        }
          "song" -> SongWidget(state, live)
          "score" -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-             Caption("Achievement")
+             val achievement = data.optDouble("achievement")
+diff --git a/locales/en.json b/locales/en.json
+index 9ceca9c..d0783f2 100644
+--- a/locales/en.json
++++ b/locales/en.json
+@@ -381,6 +381,7 @@
+   "widget.connection.title": "Devices",
+   "widget.judgments.description": "Live judgments from Critical to Miss",
+   "widget.judgments.title": "Judgments",
++  "widget.p1.description": "Current state of the P1 button",
+   "widget.score.description": "Achievement, combo and DX score",
+   "widget.score.dx": "DX left",
+   "widget.score.title": "Score · Combo",
+diff --git a/locales/ko.json b/locales/ko.json
+index 14f5003..451c2aa 100644
+--- a/locales/ko.json
++++ b/locales/ko.json
+@@ -381,6 +381,7 @@
+   "widget.connection.title": "장치 상태",
+   "widget.judgments.description": "Critical부터 Miss까지 실시간 판정",
+   "widget.judgments.title": "판정 통계",
++  "widget.p1.description": "P1 버튼의 현재 상태",
+   "widget.score.description": "달성률, 콤보와 DX 점수",
+   "widget.score.dx": "DX 잔여",
+   "widget.score.title": "점수 · 콤보",
+diff --git a/locales/zh-Hans.json b/locales/zh-Hans.json
+index 2bd5491..0a2dab5 100644
+--- a/locales/zh-Hans.json
++++ b/locales/zh-Hans.json
+@@ -381,6 +381,7 @@
+   "widget.connection.title": "设备状态",
+   "widget.judgments.description": "实时显示 Critical 至 Miss 判定",
+   "widget.judgments.title": "判定统计",
++  "widget.p1.description": "P1 按钮当前状态",
+   "widget.score.description": "达成率、连击和DX 分数",
+   "widget.score.dx": "DX 剩余",
+   "widget.score.title": "成绩 · 连击",
+diff --git a/tests/DashboardLayoutTest.java b/tests/DashboardLayoutTest.java
+index ccc77a5..de532da 100644
 --- a/tests/DashboardLayoutTest.java
 +++ b/tests/DashboardLayoutTest.java
-@@ -47,8 +47,9 @@
+@@ -47,8 +47,9 @@ public final class DashboardLayoutTest {
                  + "7|connection|2|4|2|2\n8|clock|0|6|4|2";
          same(photoDefaults, defaults, "Default arrangement matches the supplied photo");
          same(photoDefaults, DashboardLayout.parse(null).encode(), "First launch uses photo arrangement");
@@ -82,7 +133,7 @@
          String previousPhoto = "oniimai-dashboard-v2|8\n1|song|0|0|4|2\n2|graph|0|2|2|2\n"
                  + "3|judgments|2|2|2|2\n4|sensors|0|4|2|2\n5|timing|2|4|2|2\n"
                  + "6|connection|0|6|4|2\n7|clock|0|8|4|2";
-@@ -62,7 +63,7 @@
+@@ -62,7 +63,7 @@ public final class DashboardLayoutTest {
                  "Saved previous default or custom arrangement is not overwritten by new defaults");
          check(defaults.startsWith("oniimai-dashboard-v2|"), "New layouts persist as version 2");
          same(defaults, DashboardLayout.parse(defaults).encode(), "Persist every default coordinate and size");
@@ -91,7 +142,7 @@
          check(!DashboardLayout.knownType("graph") && DashboardLayout.empty().add("graph")==null,
                  "Progress/density cannot be added from the catalog or through layout API");
          DashboardLayout retiredDuplicates=DashboardLayout.parse("oniimai-dashboard-v2|31\n"
-@@ -306,6 +307,11 @@
+@@ -306,6 +307,11 @@ public final class DashboardLayoutTest {
          check(resizeFailure.resizeAndPack(16, 4, 2) && resizeFailure.get(16).y == 60 && resizeFailure.get(17).y == 62,
                  "Freeing enough space permits the same overlapping resize without losing other widgets");
          valid(resizeFailure);

@@ -3,6 +3,8 @@
 
 // Caller serializes access. Kept independent of Android for host regression tests.
 struct InputState {
+    // Same transport bits as Io4Input.java. System keys are cabinet-wide.
+    static constexpr uint32_t TEST = 1u << 9, SERVICE = 1u << 10;
     uint64_t touch = 0, pendingTouch = 0, updated = 0;
     uint32_t buttons = 0, pendingButtons = 0, frameButtons = 0, previousButtons = 0, rising = 0;
     int player = 0, framePlayer = 0;
@@ -11,7 +13,7 @@ struct InputState {
     void submit(uint64_t t, uint32_t b, int p, bool enabled, uint64_t now) {
         if (!enabled || p != player) reset();
         player = p; active = enabled; updated = now;
-        t &= ((uint64_t{1} << 34) - 1); b &= 511; // Eight ring buttons plus Select/P1.
+        t &= ((uint64_t{1} << 34) - 1); b &= 511 | TEST | SERVICE;
         if (!active) { t = 0; b = 0; }
         pendingTouch |= t & ~touch; pendingButtons |= b & ~buttons;
         touch = t; buttons = b;
@@ -41,7 +43,12 @@ struct InputState {
     }
     bool button(int id, bool edge, uint64_t now) {
         expire(now);
+        uint32_t value = edge ? rising : frameButtons;
+        // JvsButtonID.Test=0 and Service=1 in both verified game builds.
+        // Preserve the game's held/edge semantics for menu entry/navigation.
+        if (id == 0) return active && (value & TEST);
+        if (id == 1) return active && (value & SERVICE);
         int bit = id - (framePlayer == 0 ? 2 : 11);
-        return active && bit >= 0 && bit < 9 && (((edge ? rising : frameButtons) >> bit) & 1);
+        return active && bit >= 0 && bit < 9 && ((value >> bit) & 1);
     }
 };

@@ -87,7 +87,7 @@ The app enables responses (`7D`), queries board info (`F0`), uses single LED (`3
 The supplied Assistant's Oniimai class does not implement button test reports. Added paths:
 
 1. Android hardware `KeyEvent` input while the user explicitly enables input monitoring. Default `W E D C X Z A Q`; per-button key learning allows remapping. The app does not change firmware keyboard mode.
-2. Optional direct HID interrupt input using the SEGA IO4 report format shown in [mai_pico hid.c](https://github.com/whowechina/mai_pico/blob/main/firmware/src/hid.c). Accepted wire length is 64 bytes with report ID 1. The 16-bit LE button bank begins at byte 29 for P1 or 31 for P2. Main button bit order is `2,3,0,15,14,13,12,11`, active low. Physical correspondence on Oniimai is **unverified**. Invalid report lengths/IDs yield diagnostic HEX rather than guessed presses.
+2. Direct HID interrupt input using the SEGA IO4 report format shown in [mai_pico hid.c](https://github.com/whowechina/mai_pico/blob/main/firmware/src/hid.c). Accepted wire length is 64 bytes with report ID 1. The 16-bit LE button bank begins at byte 29 for P1 or 31 for P2. Main button bit order is `2,3,0,15,14,13,12,11`, active low. P1 uses bank 0 bit 1. Since 1.3.4, bank 0 bit 9 (TEST) and bit 6 (SERVICE), active high, also reach the game system-input hooks. See [Cabinet keys](CABINET_KEYS.md) for evidence, tests and the remaining physical-switch verification limits. Invalid report lengths/IDs are rejected as input-format errors rather than guessed presses.
 
 USB interfaces are read with Android's [USB Host API](https://developer.android.com/develop/connectivity/usb/host). No third-party USB driver library is included. Only CDC-ACM serial devices are supported in this version.
 

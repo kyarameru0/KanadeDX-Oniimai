@@ -63,7 +63,61 @@ public final class UsbTransportTest {
         try{new UsbIo.Hid(new UsbManager(hidFailure),removed,(data,n)->{},message->{});throw new AssertionError("missing HID accepted");}catch(IOException expected){checks++;}
         check(hidFailure.closes.get()==1,"HID interface lookup failure leaked fd");
         ceilingTests();
-        System.out.println("PASS: "+checks+" USB transport ownership/cancellation checks");
+        readHealthTests();
+        readerRecoveryTests();
+        System.out.println("PASS: "+checks+" USB transport ownership/cancellation/read-recovery checks");
+    }
+    private static long ms(long n){return TimeUnit.MILLISECONDS.toNanos(n);}
+    private static void readHealthTests(){
+        UsbIo.ReadHealth h=new UsbIo.ReadHealth();
+        check(h.observe(8,ms(1),ms(0))==UsbIo.ReadHealth.DATA,"positive read is data");
+        check(h.observe(-1,ms(200),ms(200))==UsbIo.ReadHealth.IDLE,"full-length -1 is an idle timeout");
+        check(h.observe(-1,ms(120),ms(400))==UsbIo.ReadHealth.IDLE,"slow -1 is never counted as a failure");
+        check(h.observe(-1,ms(1),ms(500))==UsbIo.ReadHealth.BACKOFF,"first fast failure backs off");
+        check(h.observe(-1,ms(1),ms(1400))==UsbIo.ReadHealth.BACKOFF,"fast failures below the window keep backing off");
+        check(h.observe(-1,ms(1),ms(1500))==UsbIo.ReadHealth.FAILED,"one second of unbroken fast failures is reported");
+        UsbIo.ReadHealth reset=new UsbIo.ReadHealth();
+        reset.observe(-1,ms(1),ms(0));reset.observe(-1,ms(1),ms(900));
+        check(reset.observe(4,ms(1),ms(950))==UsbIo.ReadHealth.DATA,"data between failures");
+        check(reset.observe(-1,ms(1),ms(1000))==UsbIo.ReadHealth.BACKOFF,"data restarts the failure window");
+        check(reset.observe(-1,ms(1),ms(1900))==UsbIo.ReadHealth.BACKOFF,"window measured from the new first failure");
+        reset.observe(-1,ms(200),ms(1950));
+        check(reset.observe(-1,ms(1),ms(3500))==UsbIo.ReadHealth.BACKOFF,"an idle timeout also restarts the window");
+        UsbIo.ReadHealth zero=new UsbIo.ReadHealth();
+        check(zero.observe(0,ms(1),ms(0))==UsbIo.ReadHealth.BACKOFF,"instant zero-length reads pause instead of spinning");
+        check(zero.observe(0,ms(1),ms(5000))==UsbIo.ReadHealth.BACKOFF,"zero-length reads never count as failure");
+        check(zero.observe(0,ms(200),ms(5200))==UsbIo.ReadHealth.IDLE,"slow zero-length read is idle");
+    }
+    private static void readerRecoveryTests()throws Exception{
+        // Review case: bulkTransfer returns -1 at once forever. The reader must neither spin nor stay silent.
+        UsbDeviceConnection broken=new UsbDeviceConnection();UsbIo.Cdc cdc=open(broken);
+        CountDownLatch failed=new CountDownLatch(1);AtomicReference<String> reason=new AtomicReference<>();java.util.concurrent.atomic.AtomicInteger data=new java.util.concurrent.atomic.AtomicInteger();
+        long started=System.nanoTime();
+        cdc.start((bytes,n)->data.incrementAndGet(),message->{reason.set(message);failed.countDown();});
+        check(failed.await(3,TimeUnit.SECONDS),"persistent fast read failure never reached the failure callback");
+        long elapsed=System.nanoTime()-started;
+        check(elapsed>=ms(UsbIo.ReadHealth.FAILURE_WINDOW_MS-50),"a fast failure was reported before its window");
+        check(broken.reads.get()<200,"failing reader spun: "+broken.reads.get()+" reads");
+        check(data.get()==0&&reason.get()!=null,"failure reported without data");
+        cdc.close();check(broken.closes.get()==1,"failed reader closed once");
+
+        // Normal idle link: every read times out after the full wait. No failure may be reported.
+        UsbDeviceConnection idle=new UsbDeviceConnection();idle.readDelayMs=UsbIo.ReadHealth.TIMEOUT_MS;UsbIo.Cdc quiet=open(idle);
+        CountDownLatch idleFailed=new CountDownLatch(1);CountDownLatch idleData=new CountDownLatch(1);
+        quiet.start((bytes,n)->idleData.countDown(),message->idleFailed.countDown());
+        check(!idleFailed.await(1500,TimeUnit.MILLISECONDS),"idle timeouts were treated as a broken port");
+        idle.payloads.offer(new byte[]{1,2,3});
+        check(idleData.await(1,TimeUnit.SECONDS),"data after idle timeouts was not delivered");
+        quiet.close();check(idleFailed.getCount()==1,"close reported as failure");
+
+        // A short glitch below the window recovers silently and data keeps flowing.
+        UsbDeviceConnection glitch=new UsbDeviceConnection();UsbIo.Cdc flaky=open(glitch);
+        CountDownLatch glitchFailed=new CountDownLatch(1);CountDownLatch glitchData=new CountDownLatch(1);
+        flaky.start((bytes,n)->glitchData.countDown(),message->glitchFailed.countDown());
+        Thread.sleep(300);glitch.readDelayMs=UsbIo.ReadHealth.TIMEOUT_MS;glitch.payloads.offer(new byte[]{9});
+        check(glitchData.await(1,TimeUnit.SECONDS),"data after a short glitch was not delivered");
+        check(!glitchFailed.await(1500,TimeUnit.MILLISECONDS),"a short glitch dropped a working port");
+        flaky.close();
     }
     private static void ceilingTests()throws Exception{
         UsbDeviceConnection out=new UsbDeviceConnection();List<String> errors=Collections.synchronizedList(new ArrayList<>());

@@ -37,7 +37,7 @@ git diff --stat
 git diff
 ```
 
-`--check` validates whether the patch fits; it does not apply it. Stop if it reports an error. Do not force an old patch over a different implementation. The patches contain full code changes, including Korean/Chinese labels where needed.
+`--check` validates whether the patch fits; it does not apply it. Stop if it reports an error. Do not force an old patch over a different implementation. The patches contain full code changes, including new message keys in `locales/*.json` where needed. After applying a patch that touches `locales/`, run `python scripts/generate_locales.py`: the generated `Msg.java` and `I18nCatalog.java` are not part of the patches.
 
 To undo **only that example**, before making additional edits to its lines:
 
@@ -56,7 +56,7 @@ The reverse check should pass first. It removes the patch from source, not an in
 
 ### Step 1: Describe the switch beside its owner
 
-Open [GameSession.java](../app/src/main/java/io/oniimai/kanade/GameSession.java), find `renderDisplayTab()`, then the `phone` settings group. The patch adds a `phone.toggle(...)` row using the existing Korean/Chinese `tr(...)` labels.
+Open [GameSession.java](../app/src/main/java/io/oniimai/kanade/GameSession.java), find `renderDisplayTab()`, then the `phone` settings group. The patch adds a `phone.toggle(...)` row whose title and summary are two new message keys, `settings.phone.clock_seconds` and `settings.phone.clock_seconds_summary`, with English, Korean and Chinese texts in `locales/*.json`.
 
 Its two state operations are:
 
@@ -71,21 +71,21 @@ The same key and default must be used by the consumer. This is a game-side prefe
 
 ### Step 2: Update observable state at the existing refresh point
 
-Open [NativeDashboard.kt](../app/src/main/java/io/oniimai/kanade/NativeDashboard.kt), then `WidgetState.update()`. The patch reads the preference only for clock tiles:
+Open [NativeDashboard.kt](../app/src/main/java/io/oniimai/kanade/NativeDashboard.kt), then `NativeDashboard.update()`. The patch reads the preference only for clock tiles:
 
 ```kotlin
-clockSeconds = host.prefs().getBoolean("dashboard_clock_seconds", false)
-val unit = if (clockSeconds) 1000L else 60000L
-clockMillis = System.currentTimeMillis() / unit * unit
+state.clockSeconds = host.prefs().getBoolean("dashboard_clock_seconds", false)
+val unit = if (state.clockSeconds) 1000L else 60000L
+state.clockMillis = System.currentTimeMillis() / unit * unit
 ```
 
-The complete patch declares `clockSeconds` with `mutableStateOf` and `clockMillis` with `mutableLongStateOf`. Compose can observe these values. A plain field may change without triggering a redraw.
+In `WidgetState` ([OniScreens.kt](../app/src/main/java/io/oniimai/kanade/OniScreens.kt)), the complete patch declares `clockSeconds` with `mutableStateOf` and replaces `minute` with `clockMillis` (`mutableLongStateOf`). Compose can observe these values. A plain field may change without triggering a redraw.
 
 Rounding limits clock-state changes to once per second or minute. The dashboard already refreshes visible content roughly every 150 ms; do not add a second polling coroutine or background timer per widget. Hidden dashboards retain the existing pause behavior.
 
 ### Step 3: Render from that state
 
-The clock branch constructs `Date(state.clockMillis)` and selects `HH:mm:ss` or `h:mm:ss` when enabled. When disabled, it keeps `HH:mm` or `h:mm`. Existing `Metric`, `Caption`, spacing tokens and 2×2/4×2 layout are reused.
+The clock branch in `WidgetContent()` constructs `Date(state.clockMillis)` and selects `HH:mm:ss` or `h:mm:ss` when enabled. When disabled, it keeps `HH:mm` or `h:mm`. Existing `ClockTime`, `Caption`, spacing tokens and 2×2/4×2 layout are reused.
 
 ```mermaid
 flowchart LR
@@ -97,7 +97,7 @@ flowchart LR
 
 ### Verify the outcome
 
-Run the locale check and Android compile/build described below. On a device, open the **game's** settings → Display, turn on the new switch, close settings, and inspect a clock tile. Restart the game and confirm the choice remains saved. Check both tile widths, both app languages, 12/24-hour system formats and a larger system font size. OFF should restore the original format.
+Run the locale check and Android compile/build described below. On a device, open the **game's** settings → Display, turn on the new switch, close settings, and inspect a clock tile. Restart the game and confirm the choice remains saved. Check both tile widths, all three app languages, 12/24-hour system formats and a larger system font size. OFF should restore the original format.
 
 The launcher preview has no new settings switch in this example. Its clock remains at its own default unless you separately add a preview control. A switch in the game cannot be tested by looking only at the launcher preview.
 
@@ -114,14 +114,14 @@ The model's ordinary size rules already support 2×2 and 4×2 for newly recogniz
 
 ### Step 2: Expose it in the picker
 
-In [DashboardView.java](../app/src/main/java/io/oniimai/kanade/DashboardView.java), add the same `"p1"` identifier to its picker `TYPES` array, and add cases to `title()` and `description()`. This array is separate from the layout model's type list: updating only one leaves the widget hidden or unable to survive loading.
+In [DashboardView.java](../app/src/main/java/io/oniimai/kanade/DashboardView.java), add the same `"p1"` identifier to its picker `TYPES` array, and add cases to `title()` and `description()`. The title `P1 / START` is a hardware label and stays a literal; the description is a new message key, `widget.p1.description`. This array is separate from the layout model's type list: updating only one leaves the widget hidden or unable to survive loading.
 
 ### Step 3: Copy current diagnostic state
 
-In `WidgetState`, declare an observable Boolean, then update it only for the new type:
+In `WidgetState` ([OniScreens.kt](../app/src/main/java/io/oniimai/kanade/OniScreens.kt)), declare an observable Boolean. `NativeDashboard.update()` updates it only for the new type:
 
 ```kotlin
-if (type == "p1") p1 = host.diagnostic()[0] and 256L != 0L
+if (type == "p1") state.p1 = host.diagnostic()[0] and 256L != 0L
 ```
 
 [DashboardHost.diagnostic()](../app/src/main/java/io/oniimai/kanade/DashboardHost.java) returns a snapshot: element 0 contains the eight ring-button bits plus P1 at bit 8 (`256`). The widget reads current state; it does not consume input edges or inject a press into the game. No JNI/native change is required.
@@ -181,7 +181,7 @@ For the USB-alias recipe, include the parser's text dependencies as well:
 
 ```powershell
 New-Item -ItemType Directory -Force work/recipe-tests | Out-Null
-$recipeSources = 'PortSelection', 'SetupDefaults', 'Io4Input', 'Protocol', 'UiText', 'UiTextCatalog' |
+$recipeSources = 'PortSelection', 'SetupDefaults', 'Io4Input', 'Protocol', 'I18n', 'I18nCatalog', 'Msg' |
   ForEach-Object { "app/src/main/java/io/oniimai/kanade/$_.java" }
 javac --release 8 -encoding UTF-8 -d work/recipe-tests @recipeSources tests/HardwareSelectionTest.java
 java -cp work/recipe-tests io.oniimai.kanade.HardwareSelectionTest
@@ -220,12 +220,13 @@ Then open KanadeDX on the device with the module enabled/scoped in LSPosed. Repl
 | Widget absent from Add | Both `DashboardLayout.TYPES` and `DashboardView.TYPES` must include the identifier. |
 | Widget disappears after reopening | Check `knownType`, supported sizes and saved-layout parsing; defaults alone do not register persistence. |
 | Displayed value never changes | State must be observable, and the visible dashboard must receive refreshes; a held hardware state is easier to test than a short pulse. |
-| Host test cannot find `Protocol` or `UiText` | Include all source dependencies in the focused compile, or use the full host runner. |
+| Host test cannot find `Protocol`, `I18n` or `Msg` | Include all source dependencies in the focused compile, or use the full host runner. |
+| `Msg.SOME_KEY` does not compile | The key is missing from `locales/*.json`, or `scripts/generate_locales.py` has not been run since applying the patch. |
 | New UI still looks like the old build | Confirm the installed APK/signature, LSPosed scope and a fresh game process. |
 | Patch no longer applies | Compare its target functions with your branch; do not bypass the context check or discard unrelated work. |
 
 ## Verification scope of the supplied patches
 
-Each patch was applied independently to the 1.0.0 source in an isolated working copy. Recipes 1 and 2 passed Android release Kotlin and Java compilation. Recipe 2 passed **490 layout checks**; recipe 3 passed **55 hardware-selection checks**. All three passed the locale checker. Reverse application was also checked against each example's working copy.
+The patches were regenerated for the 1.3.0 i18n source. Each was applied independently to a clean copy, followed by `generate_locales.py`. Recipes 1 and 2 passed Android release Kotlin and Java compilation. Recipe 2 passed **490 layout checks**; recipe 3 passed **62 hardware-selection checks**. All three passed the locale checker and `git apply --check` against the unchanged tree.
 
 These are compile/model checks, not new physical-device tests. The example APKs were not installed and the published module, tag and release assets were not changed by these tutorials.

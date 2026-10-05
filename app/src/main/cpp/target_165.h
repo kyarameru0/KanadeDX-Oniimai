@@ -74,6 +74,8 @@ static constexpr uintptr_t RVA_UI_OBJECT_ALIVE = 0x50014ec;
 static constexpr uint64_t SIG_UI_OBJECT_ALIVE = 0x58745e537e93ad6eULL;
 static constexpr uintptr_t DATA_UI_SETTINGS_TYPEINFO = 0x563a000;
 static constexpr uintptr_t FIELD_UI_MAIN_GROUP = 0x20;
+// KanadeDXGameControl.prevRot (ScreenOrientation): the cache its Update compares before re-running the layout.
+static constexpr uintptr_t FIELD_UI_PREV_ROTATION = 0xfc;
 
 static constexpr uintptr_t RVA_BOOT_UPDATE = 0x52062ec;
 static constexpr uint64_t SIG_BOOT_UPDATE = 0x5b7757f91e52ff35ULL;
@@ -93,6 +95,11 @@ static constexpr uint64_t SIG_BOOT_ACTIVE = 0xd51536e91d3a536eULL;
 static constexpr uintptr_t RVA_BOOT_INTERACTABLE = 0x51f56c8;
 static constexpr uint64_t SIG_BOOT_INTERACTABLE = 0xd2b4f32811f74f36ULL;
 
+// UnityEngine.Behaviour.get_isActiveAndEnabled (Canvas and processing UI).
+static constexpr uintptr_t RVA_BOOT_BEHAVIOUR_ACTIVE = 0x4ffad20;
+static constexpr uint64_t SIG_BOOT_BEHAVIOUR_ACTIVE = 0xaf7f03493c61f462ULL;
+static constexpr uintptr_t FIELD_BOOT_MAIN_CANVAS = 0x30;
+static constexpr uintptr_t FIELD_BOOT_PROCESSING_UI = 0x80;
 static constexpr uintptr_t FIELD_BOOT_START_BUTTON = 0x60;
 static constexpr uintptr_t FIELD_BOOT_START_CALLBACK = 0xd0;
 
@@ -209,6 +216,7 @@ static constexpr TargetBuild PROFILE = {
     SIG_UI_OBJECT_ALIVE,
     DATA_UI_SETTINGS_TYPEINFO,
     FIELD_UI_MAIN_GROUP,
+    FIELD_UI_PREV_ROTATION,
     RVA_BOOT_UPDATE,
     SIG_BOOT_UPDATE,
     RVA_BOOT_STARTED,
@@ -221,6 +229,10 @@ static constexpr TargetBuild PROFILE = {
     SIG_BOOT_ACTIVE,
     RVA_BOOT_INTERACTABLE,
     SIG_BOOT_INTERACTABLE,
+    RVA_BOOT_BEHAVIOUR_ACTIVE,
+    SIG_BOOT_BEHAVIOUR_ACTIVE,
+    FIELD_BOOT_MAIN_CANVAS,
+    FIELD_BOOT_PROCESSING_UI,
     FIELD_BOOT_START_BUTTON,
     FIELD_BOOT_START_CALLBACK,
     RVA_ALBUM_INSTANCE,

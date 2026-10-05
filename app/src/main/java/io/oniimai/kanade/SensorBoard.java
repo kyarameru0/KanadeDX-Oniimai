@@ -128,9 +128,9 @@ final class SensorBoard extends View {
         }
         if(footer){
         paint.setTextSize(12); paint.setColor(GameUi.INK);
-        canvas.drawText(GameUi.tr("터치 ","触摸 ") + Long.bitCount(Math.max(0,touches)) + "/34   ·   "+GameUi.tr("버튼 ","按钮 ") + Integer.bitCount(Math.max(0,buttons)&255) + "/8   ·   P1 " + ((buttons>=0&&(buttons&256)!=0)?"ON":"OFF"),0,209,paint);
+        canvas.drawText(I18n.t(Msg.SENSORS_FOOTER,Long.bitCount(Math.max(0,touches)),Integer.bitCount(Math.max(0,buttons)&255),(buttons>=0&&(buttons&256)!=0)?"ON":"OFF"),0,209,paint);
         paint.setTextSize(10);
-        canvas.drawText((flags&1)==0?GameUi.tr("터치 데이터 대기","等待触摸数据"):GameUi.tr("LIVE · 센서 상태는 읽기 전용입니다","LIVE · 传感器状态为只读"),0,226,paint);
+        canvas.drawText((flags&1)==0?I18n.t(Msg.SENSORS_WAITING):I18n.t(Msg.SENSORS_LIVE),0,226,paint);
         }
         canvas.restore();
     }

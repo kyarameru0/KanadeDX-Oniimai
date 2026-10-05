@@ -25,7 +25,6 @@ import java.util.function.IntConsumer
  * This file owns dialogs, preferences and the game session; the screens themselves live in OniScreens.kt.
  */
 internal object NativeUi {
-    @JvmStatic fun settingsShortcutWidthDp(): Int = OniTokens.shortcutWidth.value.toInt()
     /** The parent owns drag gestures; Compose supplies the themed, accessible action. */
     @JvmStatic fun floatingSettings(activity: Activity, open: Runnable): View {
         val frame = object : android.widget.FrameLayout(activity) {
@@ -34,10 +33,15 @@ internal object NativeUi {
         frame.setOnClickListener { open.run() }
         frame.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         frame.addView(ComposeHost(activity) {
-            ShortcutAction(tr("Oniimai 설정", "Oniimai 设置"), modifier = Modifier.fillMaxSize()
-                .semantics { contentDescription = tr("Oniimai 설정 · 끌어서 이동", "Oniimai 设置 · 拖动移动") }, onClick = open::run)
-        }, android.widget.FrameLayout.LayoutParams(-1, -1))
+            ShortcutAction(str(Msg.OVERLAY_SETTINGS), modifier = Modifier
+                .semantics { contentDescription = str(Msg.OVERLAY_SETTINGS_DESCRIPTION) }, onClick = open::run)
+        }, android.widget.FrameLayout.LayoutParams(-2, -2))
         return frame
+    }
+
+    /** A wrap-content in-app notice; does not create a window or interrupt the game installer. */
+    @JvmStatic fun inlineNotice(activity: Activity, text: String, dismiss: Runnable): View = ComposeHost(activity) {
+        InlineNotice(text, dismiss::run)
     }
 
     @JvmStatic fun home(activity: Activity, prefs: SharedPreferences, preview: Runnable, launch: Runnable): View = ComposeHost(activity) {
@@ -45,7 +49,8 @@ internal object NativeUi {
         key(revision) {
             HomeScreen(UiLanguage.name(), onLaunch = launch::run, onPreview = preview::run,
                 onLanguage = { UiLanguage.choose(activity, prefs, null) { revision++ } },
-                onLicenses = { LicenseUi.show(activity, null) })
+                onLicenses = { LicenseUi.show(activity, null) },
+                onAbout = { val game = installedGame(activity); about(activity, { aboutInfo(activity, game, null, null) }, null, null, null) })
         }
     }
 
@@ -60,7 +65,7 @@ internal object NativeUi {
         SettingsScreen(tab, groups, UiLanguage.name(),
             onTab = { session.settingsTab(it); tab = it },
             refresh = { groups = session.nativeSettings(tab) },
-            close = close::run, onLanguage = session::chooseLanguage, onLicenses = session::showLicenses,
+            close = close::run, onLanguage = session::chooseLanguage, onLicenses = session::showLicenses, onAbout = session::showAbout,
             listState = { page ->
                 val prefs = session.prefs()
                 val list = rememberLazyListState(prefs.getInt("native_scroll_index_$page", 0), prefs.getInt("native_scroll_offset_$page", 0))
@@ -69,8 +74,14 @@ internal object NativeUi {
             })
     }
 
-    internal fun dialog(activity: Activity, content: @Composable () -> Unit): AlertDialog = AlertDialog.Builder(activity, android.R.style.Theme_Material_Light_NoActionBar)
-        .create().apply { setView(ComposeHost(activity, content), 0, 0, 0, 0) }
+    internal fun dialog(activity: Activity, content: @Composable () -> Unit): AlertDialog = PageDialog(activity).apply {
+        val backs = backs
+        setView(ComposeHost(activity) { CompositionLocalProvider(LocalPageBacks provides backs, content = content) }, 0, 0, 0, 0)
+    }
+
+    /** A full-screen page holding a native view (the dashboard preview). */
+    @JvmStatic fun page(activity: Activity, view: View): AlertDialog = PageDialog(activity).apply { setView(view, 0, 0, 0, 0) }
+
 
     @JvmStatic fun showFullScreen(dialog: AlertDialog) {
         dialog.show()
@@ -105,27 +116,118 @@ internal object NativeUi {
         protect.accept(dialog); showFullScreen(dialog)
     }
 
+    /** Setup's choices as saved; detailed settings change these directly. */
+    private fun stored(prefs: SharedPreferences) = SetupChoices(prefs.getBoolean("external_enabled", true), prefs.getBoolean("external_clockwise", false),
+        prefs.getBoolean("auto_connect", true), prefs.getBoolean("led_enabled", true), prefs.getBoolean("aime_enabled", true))
+
+    /** Setup's own screen for the controller's display, following [state]. */
+    @JvmStatic fun externalSetup(activity: Activity, state: ExternalSetupState): View =
+        ComposeHost(activity) { key(state.language) { ExternalSetupScreen(state.view) } }
+
+    /** The About page as a full-screen dialog; [info] is read again while it is open. */
+    @JvmStatic fun about(activity: Activity, info: java.util.function.Supplier<AboutInfo>, protect: Consumer<AlertDialog>?,
+                         firmware: Runnable?, diagnostics: Runnable?) {
+        lateinit var panel: AlertDialog
+        panel = dialog(activity) {
+            AboutScreen(info::get, onBack = { panel.dismiss() },
+                onSource = {
+                    try { activity.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(LicenseText.SOURCE_URL))) }
+                    catch (_: android.content.ActivityNotFoundException) { android.widget.Toast.makeText(activity, str(Msg.LICENSE_NO_BROWSER), android.widget.Toast.LENGTH_SHORT).show() }
+                },
+                onLicenses = { LicenseUi.show(activity, protect) },
+                onFirmware = firmware?.let { f -> { f.run() } }, onDiagnostics = diagnostics?.let { d -> { d.run() } })
+        }
+        protect?.accept(panel); showFullScreen(panel)
+    }
+
+    /** The phone's own facts, read once: the device name is a settings query, and About reads its values every second. */
+    @Volatile private var phone: AboutInfo? = null
+
+    /** The phone, this module and, where known, the game, for the About page. */
+    @JvmStatic fun aboutInfo(activity: Activity, gameVersion: String?, module: String?, firmware: String?): AboutInfo {
+        val base = phone ?: run {
+            val named = try { android.provider.Settings.Global.getString(activity.contentResolver, android.provider.Settings.Global.DEVICE_NAME) } catch (_: RuntimeException) { null }
+            val device = listOf(android.os.Build.MANUFACTURER, android.os.Build.MODEL).filter { !it.isNullOrBlank() }.distinct().joinToString(" ")
+            AboutInfo("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", BuildConfig.BUILD_TYPE,
+                named?.takeIf { it.isNotBlank() } ?: device, device, android.os.Build.VERSION.RELEASE ?: "—",
+                android.os.Build.VERSION.INCREMENTAL ?: android.os.Build.DISPLAY ?: "—", null, null, null).also { phone = it }
+        }
+        return base.copy(gameVersion = gameVersion, module = module, firmware = firmware)
+    }
+
+    /** The installed game's version, as the launcher sees it; null when it is not installed or cannot be seen. */
+    private fun installedGame(activity: Activity): String? = listOf("app.KanadeDX", "app.KanadeDX.oniimai").firstNotNullOfOrNull { name ->
+        try { activity.packageManager.getPackageInfo(name, 0).versionName } catch (_: Exception) { null }
+    }
+
+    /** What setup shows about the controller, read from the session; nothing here opens or asks for anything. */
+    private fun setupSignals(probe: SetupProbe): SetupSignals {
+        val link = probe.setupLink()
+        if (link < 0) return SetupSignals(screenAttached = probe.external(), screenShowing = probe.externalActive())
+        val d = probe.diagnostic()
+        val open = probe.setupInputs()
+        return SetupSignals(live = true, link = when (link) { 1 -> LinkState.PERMISSION; 2 -> LinkState.CONNECTED; 3 -> LinkState.FAILED; 4 -> LinkState.PARTIAL
+                else -> LinkState.WAITING },
+            buttons = (d[0] and 0xFFL).toInt(), touches = d[1], buttonsLinked = open and 2 != 0, touchLinked = open and 1 != 0,
+            ledLinked = probe.ledLinked(), screenAttached = probe.external(), screenShowing = probe.externalActive())
+    }
+
     @JvmStatic fun brightness(activity: Activity, current: Int, protect: Consumer<AlertDialog>, action: IntConsumer) {
         lateinit var dialog: AlertDialog
         dialog = dialog(activity) { BrightnessScreen(current, onBack = { dialog.dismiss() }, onChange = action::accept) }
         protect.accept(dialog); showFullScreen(dialog)
     }
 
-    @JvmStatic fun setup(activity: Activity, prefs: SharedPreferences, protect: Consumer<AlertDialog>?, changed: Runnable?, finished: Runnable?): AlertDialog {
+    @JvmStatic fun setup(activity: Activity, prefs: SharedPreferences, probe: SetupProbe?, protect: Consumer<AlertDialog>?, changed: Runnable?, finished: Runnable?): AlertDialog {
+        // Opened again from Settings after setup was finished: the welcome screen can be closed with its back arrow.
+        val firstRun = !prefs.getBoolean("setup_complete", false)
         lateinit var dialog: AlertDialog
         dialog = dialog(activity) {
-            val initial = remember { SetupChoices(prefs.getBoolean("external_enabled", true), prefs.getBoolean("external_clockwise", false),
-                prefs.getBoolean("auto_connect", true), prefs.getBoolean("led_enabled", true), prefs.getBoolean("aime_enabled", true)) }
-            SetupScreen(UiText.language(), initial,
-                onLanguage = { code -> UiText.language(code); prefs.edit().putString("ui_language", code).apply(); changed?.run() },
+            val initial = remember { stored(prefs) }
+            SetupScreen(I18n.language(), initial,
+                onLanguage = { code -> UiLanguage.save(prefs, code); changed?.run() },
                 onCancel = { dialog.dismiss() },
                 onFinish = { c ->
                     prefs.edit().putBoolean("external_enabled", c.external).putBoolean("external_clockwise", c.clockwise).putBoolean("auto_connect", c.auto)
                         .putBoolean("led_enabled", c.led).putBoolean("aime_enabled", c.aime).putBoolean("setup_complete", true).apply()
                     changed?.run(); dialog.dismiss()
-                })
+                },
+                signals = { probe?.let(::setupSignals) ?: SetupSignals() },
+                onSearch = { probe?.setupSearch() }, onRetry = { probe?.setupRetry() },
+                firstRun = firstRun,
+                onScreen = { probe?.setupView(it) },
+                advanced = { tab -> probe?.setupSettings(tab) ?: emptyList() },
+                stored = { probe?.setupChoices() ?: stored(prefs) })
         }
         dialog.setCanceledOnTouchOutside(false); dialog.setOnDismissListener { finished?.run() }
         protect?.accept(dialog); showFullScreen(dialog); return dialog
     }
+}
+
+/** What setup's own screen on the controller's display shows; set by DisplayOutput on the UI thread. */
+internal class ExternalSetupState {
+    var view by mutableStateOf<SetupView?>(null)
+    var language by mutableStateOf("")
+}
+
+/**
+ * A full-screen page over the game. The game's activity turns hardware acceleration off, and windows opened
+ * from it inherit that, so each page asks for it itself; otherwise every page would be drawn in software.
+ * The page comes in from the right and leaves to the right as a whole window, animated by the system (the
+ * platform's Animation.Translucent: a slide with a fade, following the system's animation scale). Moving the
+ * window rather than its content leaves nothing behind on screen.
+ */
+internal class PageDialog(owner: Activity) : AlertDialog(owner, android.R.style.Theme_Material_Light_NoActionBar) {
+    /** The page's own answers to the phone's back (see [PageBack]). */
+    val backs = PageBacks()
+    init {
+        window?.addFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED)
+        window?.setWindowAnimations(android.R.style.Animation_Translucent)
+    }
+    /**
+     * The phone's back, by key or gesture: the platform calls this either way (with back callbacks on, as the
+     * dialog's default callback). A page that answers it stays open; otherwise back closes it as before.
+     */
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override fun onBackPressed() { if (!backs.press()) super.onBackPressed() }
 }

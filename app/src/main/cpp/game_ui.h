@@ -27,6 +27,7 @@ static bool (*objectAlive)(void*,const void*);
 static void (*setInteractable)(void*,bool);
 static bool triedInteractable=false;
 static GameUiState::TemporaryHide temporary;
+static GameUiState::Relayout relayout;
 
 struct Preferences {
     int getInt(const char* key,int fallback){return prefsGetInt(stringNew(key),fallback,nullptr);}
@@ -63,8 +64,16 @@ static void settingsLoad(void* self,const void* method){
     originalSettingsLoad(self,method);
 }
 static void controlUpdate(void* self,const void* method){
+    if(self&&hookStatus.load()==7&&relayout.frame(externalActive.load())){
+        // An invalid ScreenOrientation (-1) never equals Screen.orientation, so this Update re-runs the
+        // game's own UpdateScreenOrientation -> ScreenUpdatePositionAndAreaSize for the current surface.
+        int32_t stale=-1;memcpy(static_cast<char*>(self)+targetBuild->FIELD_UI_PREV_ROTATION,&stale,sizeof(stale));
+    }
     originalControlUpdate(self,method);
     if(hookStatus.load()!=7)return;
+    // KanadeDX disables this control at boot and enables it right after its loading screen starts to
+    // fade out, so the first Update after Start marks the end of that loading screen.
+    pthread_mutex_lock(&stateLock);displayFrames.reached(DisplayFrameState::LOADED);pthread_mutex_unlock(&stateLock);
     // Unity objects are touched only here, never from Java/UI/JNI callbacks.
     if(!triedInteractable){
         triedInteractable=true;

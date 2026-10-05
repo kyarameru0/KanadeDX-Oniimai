@@ -78,6 +78,7 @@ struct TargetBuild {
     uint64_t SIG_UI_OBJECT_ALIVE;
     uintptr_t DATA_UI_SETTINGS_TYPEINFO;
     uintptr_t FIELD_UI_MAIN_GROUP;
+    uintptr_t FIELD_UI_PREV_ROTATION;
     uintptr_t RVA_BOOT_UPDATE;
     uint64_t SIG_BOOT_UPDATE;
     uintptr_t RVA_BOOT_STARTED;
@@ -90,6 +91,10 @@ struct TargetBuild {
     uint64_t SIG_BOOT_ACTIVE;
     uintptr_t RVA_BOOT_INTERACTABLE;
     uint64_t SIG_BOOT_INTERACTABLE;
+    uintptr_t RVA_BOOT_BEHAVIOUR_ACTIVE;
+    uint64_t SIG_BOOT_BEHAVIOUR_ACTIVE;
+    uintptr_t FIELD_BOOT_MAIN_CANVAS;
+    uintptr_t FIELD_BOOT_PROCESSING_UI;
     uintptr_t FIELD_BOOT_START_BUTTON;
     uintptr_t FIELD_BOOT_START_CALLBACK;
     uintptr_t RVA_ALBUM_INSTANCE;

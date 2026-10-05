@@ -17,7 +17,7 @@ import zipfile
 
 IL2CPP_MEMBER = "lib/arm64-v8a/libil2cpp.so"
 METADATA_MEMBER = "assets/bin/Data/Managed/Metadata/global-metadata.dat"
-EXPECTED_FUNCTION_COUNT = 55
+EXPECTED_FUNCTION_COUNT = 56
 
 
 def require(condition, message):
@@ -149,12 +149,13 @@ def verify(apk, root):
             require(name not in declared, f"Duplicate target manifest RVA: {name}")
             declared[name] = int(address, 16)
     require(declared == rvas, "Target manifest RVAs differ from profile header")
-    for key, symbol in (("settings_typeinfo", "DATA_UI_SETTINGS_TYPEINFO"), ("main_group", "FIELD_UI_MAIN_GROUP")):
+    for key, symbol in (("settings_typeinfo", "DATA_UI_SETTINGS_TYPEINFO"), ("main_group", "FIELD_UI_MAIN_GROUP"),
+                        ("prev_rotation", "FIELD_UI_PREV_ROTATION")):
         values = re.findall(r"\b" + symbol + r"\s*=\s*(0x[0-9a-fA-F]+)\s*;", header)
         require(len(values) == 1 and int(values[0], 16) == int(target["ui_layout"][key], 16),
                 f"UI metadata layout mismatch: {symbol}")
     require(header_id.hex() == target["elf_build_id"], "Recorded ELF build IDs disagree")
-    for key,symbol in (("start_button","FIELD_BOOT_START_BUTTON"),("start_callback","FIELD_BOOT_START_CALLBACK")):
+    for key,symbol in (("start_button","FIELD_BOOT_START_BUTTON"),("start_callback","FIELD_BOOT_START_CALLBACK"),("main_canvas","FIELD_BOOT_MAIN_CANVAS"),("processing_ui","FIELD_BOOT_PROCESSING_UI")):
         values=re.findall(r"\b"+symbol+r"\s*=\s*(0x[0-9a-fA-F]+)\s*;",header)
         require(len(values)==1 and int(values[0],16)==int(target["boot_layout"][key],16),f"Boot field offset mismatch: {symbol}")
     check_hash(sha256_file(apk), target["apk_sha256"], "APK")

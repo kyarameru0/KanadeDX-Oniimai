@@ -47,27 +47,28 @@ final class AimeReader {
     AimeReader(UsbManager usb,IntSupplier gameStatus,IntSupplier gameLed,LongSupplier gameGeneration,CardSubmitter submit,ErrorReporter reportError){this(usb,gameStatus,gameLed,gameGeneration,submit,reportError,SystemClock::uptimeMillis);}
     AimeReader(UsbManager usb,IntSupplier gameStatus,IntSupplier gameLed,LongSupplier gameGeneration,CardSubmitter submit,ErrorReporter reportError,LongSupplier rfClock){this.usb=usb;this.gameStatus=gameStatus;this.gameLed=gameLed;this.gameGeneration=gameGeneration;this.submit=submit;this.reportError=reportError;this.rfClock=rfClock;}
     boolean running(){return running;}
-    private static String tr(String ko,String zh){return "zh-Hans".equals(UiText.language())?zh:ko;}
+    /** The reader answered and is polling normally; opening, retrying, RF recovery and card errors are not "ready". */
+    boolean ready(){return running&&state==2&&!scanBlocked;}
     String summary(){
-        if(!running)return tr("Aime 리더 OFF","Aime 读卡器已关闭");
-        if(state==1)return tr("Aime 리더 연결 중…","正在连接 Aime 读卡器…");
-        if(state==4)return tr("Aime 리더 재연결 대기","等待重新连接 Aime 读卡器");
-        if(state==5)return tr("앱 백그라운드 · 카드 읽기 중지","应用在后台 · 已暂停读卡");
+        if(!running)return I18n.t(Msg.AIME_STATUS_OFF);
+        if(state==1)return I18n.t(Msg.AIME_STATUS_CONNECTING);
+        if(state==4)return I18n.t(Msg.AIME_STATUS_RECONNECTING);
+        if(state==5)return I18n.t(Msg.AIME_STATUS_BACKGROUND);
         if(scanBlocked){
             long remaining=Math.max(0,rfRetryAfter-rfClock.getAsLong());
-            if(remaining>0)return tr("카드 리더 복구 중 · ","读卡器恢复中 · ")+((remaining+999)/1000)+tr("초 후 자동 재시도","秒后自动重试");
-            return tr("카드 읽기 연결 복구됨 · 게임 카드 인식 대기","读卡连接已恢复 · 等待游戏读卡");
+            if(remaining>0)return I18n.t(Msg.AIME_STATUS_RECOVERING,(remaining+999)/1000);
+            return I18n.t(Msg.AIME_STATUS_RECOVERED);
         }
         if(state==3){
-            if(issue==AimeChannel.MULTIPLE_CARDS)return tr("카드를 한 장만 대세요","请只放置一张卡");
-            if(issue==AimeChannel.READ_FAILED)return tr("카드 읽기 실패 · 카드를 떼었다가 다시 대 주세요","读卡失败 · 请移开卡片后重试");
-            if(issue==AimeChannel.INVALID_CARD)return tr("Aime 카드 번호를 확인할 수 없습니다","无法验证 Aime 卡号");
-            return tr("지원하지 않는 카드 · Aime 카드를 사용하세요","不支持此卡 · 请使用 Aime 卡");
+            if(issue==AimeChannel.MULTIPLE_CARDS)return I18n.t(Msg.AIME_CARD_MULTIPLE);
+            if(issue==AimeChannel.READ_FAILED)return I18n.t(Msg.AIME_CARD_READ_FAILED);
+            if(issue==AimeChannel.INVALID_CARD)return I18n.t(Msg.AIME_CARD_INVALID);
+            return I18n.t(Msg.AIME_CARD_UNSUPPORTED);
         }
-        if(game<0)return tr("리더 연결됨 · 게임 카드 기능 준비 중","读卡器已连接 · 等待游戏读卡功能就绪");
-        if(game==1)return tr("카드를 리더에 대세요","请将卡片放在读卡器上");
-        if(game==2)return tr("카드 전달됨 · 게임에서 처리 중","卡片已提交 · 游戏正在处理");
-        return tr("리더 연결됨 · 게임 카드 인식 화면 대기","读卡器已连接 · 等待游戏读卡画面");
+        if(game<0)return I18n.t(Msg.AIME_STATUS_GAME_PREPARING);
+        if(game==1)return I18n.t(Msg.AIME_STATUS_PRESENT_CARD);
+        if(game==2)return I18n.t(Msg.AIME_STATUS_SUBMITTED);
+        return I18n.t(Msg.AIME_STATUS_WAITING_SCREEN);
     }
     String diagnostic(){AimeChannel current=channel;return summary()+" / Accepted: "+accepted+" / Game: "+game+" / State: "+state+" / Issue: "+issue+" / Idle gap: "+cadence.gapMillis()+"ms / "+(current==null?lastTransport:current.diagnostic());}
     /** Called only by the UI tick: no USB operation, wait or channel monitor. */

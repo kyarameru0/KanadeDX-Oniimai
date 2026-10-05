@@ -66,7 +66,7 @@ if (n.endsWith(" led")) return LED;
 if (n.endsWith(" nfc")) return NFC;
 ```
 
-Touch is represented as 34 sensor bits: A1–A8, B1–B8, C1/C2, D1–D8 and E1–E8. IO4 ring/P1 button state is tracked separately. [ControllerInput](../app/src/main/java/io/oniimai/kanade/ControllerInput.java) suppresses repeat key-down and joystick navigation events before Android can turn them into repeated menu presses.
+Touch is represented as 34 sensor bits: A1–A8, B1–B8, C1/C2, D1–D8 and E1–E8. IO4 ring/P1 and cabinet TEST/SERVICE button state is tracked separately. [Cabinet keys](CABINET_KEYS.md) documents the system-input mapping and its hardware verification limits. [ControllerInput](../app/src/main/java/io/oniimai/kanade/ControllerInput.java) suppresses repeat key-down and joystick navigation events before Android can turn them into repeated menu presses.
 
 ## 2. Verify before installing hooks
 

@@ -25,7 +25,6 @@ public final class MainActivity extends Activity {
         super.onCreate(state);NfcBridgeAccess.grant(this);uiPrefs=getSharedPreferences("oniimai_ui",MODE_PRIVATE);UiLanguage.load(uiPrefs);GameAssets.bind(this);showHome();
     }
     private int dp(float n){return GameUi.dp(this,n);}
-    private String tr(String ko,String zh){return GameUi.tr(ko,zh);}
     private void install(View root){
         if(android.os.Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         setContentView(root);
@@ -35,7 +34,7 @@ public final class MainActivity extends Activity {
         install(NativeUi.home(this,uiPrefs,this::showPreview,()->{
             Intent intent=getPackageManager().getLaunchIntentForPackage("app.KanadeDX");
             if(intent==null)intent=getPackageManager().getLaunchIntentForPackage("app.KanadeDX.oniimai");
-            if(intent!=null)startActivity(intent);else Toast.makeText(this,tr("KanadeDX가 설치되어 있지 않습니다.","尚未安装 KanadeDX。"),Toast.LENGTH_LONG).show();
+            if(intent!=null)startActivity(intent);else Toast.makeText(this,I18n.t(Msg.HOME_NOT_INSTALLED),Toast.LENGTH_LONG).show();
         }));
     }
     private void showPreview(){
@@ -48,12 +47,12 @@ public final class MainActivity extends Activity {
         public SharedPreferences prefs(){return getSharedPreferences("oniimai_dashboard_preview",MODE_PRIVATE);}
         public boolean demo(){return true;}
         public long[] diagnostic(){return new long[]{0,0,1,0};}
-        public String connectionDescription(){return tr("미리보기 · USB 연결 OFF","预览 · USB 连接 OFF");}
-        public String ledDescription(){return tr("미리보기 · LED OFF","预览 · LED OFF");}
-        public String displayDescription(){return tr("폰 미리보기 · 외부 출력 OFF","手机预览 · 外接输出 OFF");}
+        public String connectionDescription(){return I18n.t(Msg.PREVIEW_INPUT);}
+        public String ledDescription(){return I18n.t(Msg.PREVIEW_LED);}
+        public String displayDescription(){return I18n.t(Msg.PREVIEW_DISPLAY);}
         public boolean externalActive(){return false;}
         public boolean ledEnabled(){return false;}
-        public void showSettings(){new AlertDialog.Builder(MainActivity.this).setMessage(tr("실제 연결 설정은 게임 안 Onii 설정을 사용하세요.","实际连接请使用游戏内 Onii 设置。" )).setPositiveButton(tr("확인","确定"),null).show();}
+        public void showSettings(){new AlertDialog.Builder(MainActivity.this).setMessage(I18n.t(Msg.PREVIEW_SETTINGS_HINT)).setPositiveButton(I18n.t(Msg.COMMON_OK),null).show();}
         public void updateDashboard(DashboardView view){view.update("{}",true,null);}
         public void setDashboardEditing(boolean editing){}
         public void choose(String title,String[] options,int selected,IntConsumer action){

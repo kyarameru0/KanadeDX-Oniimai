@@ -14,6 +14,23 @@ template<class Prefs> bool migrateCompact(Prefs& prefs){
     return true;
 }
 
+// KanadeDX lays out its main camera and top screen from Screen size, and redoes that only when
+// Screen.orientation differs from the value it cached (KanadeDXGameControl.prevRot). Moving the
+// output to or from the monitor changes the surface's aspect but not its orientation, so for a
+// short while afterwards the cache is invalidated every few frames and the game re-runs its layout
+// once Unity reports the new surface size.
+struct Relayout {
+    static constexpr int FRAMES=120,EVERY=4;
+    bool external=false;
+    int frames=0;
+    // Called once per control Update; true when the cached orientation should be invalidated now.
+    bool frame(bool nowExternal){
+        if(nowExternal!=external){external=nowExternal;frames=FRAMES;}
+        if(frames<=0)return false;
+        bool due=frames%EVERY==0;--frames;return due;
+    }
+};
+
 struct Visibility {float alpha;bool interactable,raycasts;};
 // A managed handle keeps the snapshot's object rooted; the adapter separately
 // checks Unity's native-object lifetime before reading or restoring it.

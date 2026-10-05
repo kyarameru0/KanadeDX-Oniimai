@@ -1,6 +1,8 @@
+diff --git a/app/src/main/java/io/oniimai/kanade/PortSelection.java b/app/src/main/java/io/oniimai/kanade/PortSelection.java
+index f0a75bb..0cfef0b 100644
 --- a/app/src/main/java/io/oniimai/kanade/PortSelection.java
 +++ b/app/src/main/java/io/oniimai/kanade/PortSelection.java
-@@ -12,6 +12,8 @@
+@@ -12,6 +12,8 @@ final class PortSelection {
          if(hid && n.startsWith("i/o control bd;15257;"))return IO4;
          if (!n.startsWith("onii-mai ") && !n.startsWith("oniimai ")) return NONE;
          if(hid)return n.endsWith(" io4")||n.endsWith(" io4 hid")?IO4:NONE;
@@ -9,9 +11,11 @@
          if (n.endsWith(" command")) return COMMAND;
          if (n.endsWith(" touch")) return TOUCH;
          if (n.endsWith(" led")) return LED;
+diff --git a/tests/HardwareSelectionTest.java b/tests/HardwareSelectionTest.java
+index 74d51e3..68f5fc0 100644
 --- a/tests/HardwareSelectionTest.java
 +++ b/tests/HardwareSelectionTest.java
-@@ -25,6 +25,11 @@
+@@ -25,6 +25,11 @@ public final class HardwareSelectionTest {
          check(PortSelection.unique(new String[]{"1:2:4:serialB","1:2:4:serialA"},"1:2:4:serialA")==1,"serial selects original device");
          check(PortSelection.unique(new String[]{"1:2:8:serialA"},"1:2:4:serialA")==-1,"command interface cannot replace saved touch");
          check(PortSelection.unique(new String[]{"1:2:4:serialB"},"1:2:4:serialA")==-1,"other serial is not substituted");
@@ -20,6 +24,6 @@
 +        check(PortSelection.role("Other Touch Stream",false)==PortSelection.NONE,"Unrelated prefix remains excluded");
 +        check(PortSelection.automaticTouch(new String[]{"onii-mai Touch","onii-mai touch stream"},new boolean[]{false,false})==-2,"Alias and standard descriptor stay ambiguous");
 +        check(PortSelection.protocol("onii-mai touch stream",false,0)==1,"Alias uses streaming protocol");
-         Map<String,Object> defaults=SetupDefaults.missing(Collections.emptyMap());
-         check(Boolean.FALSE.equals(defaults.get("setup_complete")),"fresh install starts wizard");
-         check(Boolean.FALSE.equals(defaults.get("touch_command")),"default9600 touch protocol");
+         String[] ids={"1:2:0:A","1:2:2:A","1:2:4:A","1:2:6:A","1:2:8:A","1:2:9:A"};
+         check(PortSelection.resolve(true,"",ids,names,hid,PortSelection.LED)==PortSelection.DISABLED,"saved empty identity is an explicit not-used, never auto-picked");
+         check(PortSelection.resolve(false,"",ids,names,hid,PortSelection.LED)==2,"no saved identity resolves by name");

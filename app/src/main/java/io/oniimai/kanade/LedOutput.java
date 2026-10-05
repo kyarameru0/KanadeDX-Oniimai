@@ -12,10 +12,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 final class LedOutput {
     private final UsbManager usb;
     private final boolean nativeLoaded;
+    /** Welcome-screen button pattern; while it is active it replaces the game's eight button colours. */
+    private final LobbyLights lobby;
+    /** First-run setup's lighting; while setup is open it replaces both the welcome pattern and the game's colours. */
+    private final SetupLights setup;
     private final ScheduledExecutorService io=Executors.newSingleThreadScheduledExecutor();
     private final AtomicInteger generation=new AtomicInteger();
     private volatile boolean running,destroyed,foreground=true;
-    private volatile java.util.function.Supplier<String> message=()->UiText.t("LED 연결 대기");
+    /** True only while a board has answered and frames are being pumped; a retrying session is running but not linked. */
+    private volatile boolean linked;
+    private volatile java.util.function.Supplier<String> message=()->I18n.t(Msg.LED_STATUS_WAITING);
     private volatile long sent,events;
     private volatile int seen,nativeStatus;
     private volatile int bodyLevel,ringLevel,sideLevel;
@@ -32,21 +38,25 @@ final class LedOutput {
     private int[] last;
     private boolean lastRing,blank;
     private long lastPing;
-    LedOutput(UsbManager usb,boolean loaded){this.usb=usb;nativeLoaded=loaded;}
+    LedOutput(UsbManager usb,boolean loaded){this(usb,loaded,null,null);}
+    LedOutput(UsbManager usb,boolean loaded,LobbyLights lobby){this(usb,loaded,lobby,null);}
+    LedOutput(UsbManager usb,boolean loaded,LobbyLights lobby,SetupLights setup){this.usb=usb;nativeLoaded=loaded;this.lobby=lobby;this.setup=setup;}
     boolean running(){return running;}
-    String summary(){return message.get()+UiText.t("\n게임 LED ")+(nativeStatus==255?UiText.t("준비 8/8"):UiText.t("상태 ")+nativeStatus)+UiText.t(" · 버튼 신호 ")+Integer.bitCount(seen&255)+UiText.t("/8 · 송신 ")+sent;}
+    boolean linked(){return running&&linked;}
+    String summary(){return I18n.t(Msg.LED_STATUS_SUMMARY,message.get(),nativeStatus==255?I18n.t(Msg.LED_STATUS_READY):I18n.t(Msg.LED_STATUS_CODE,nativeStatus),Integer.bitCount(seen&255),sent);}
     String diagnostic(){return summary()+" / Events: "+events+" / Cabinet seen: "+((seen>>>8)&7)+" / FET body/ring/side: "+bodyLevel+"/"+ringLevel+"/"+sideLevel+" / FET frames: "+cabinetFrames;}
     /** Fixed fields only: a persistent failure report must not retain exception messages. */
-    String failureDiagnostic(){return "LED running="+running+" native="+nativeStatus+" seen="+seen+" events="+events+" sent="+sent+" FET="+bodyLevel+"/"+ringLevel+"/"+sideLevel+" frames="+cabinetFrames;}
+    String failureDiagnostic(){return "LED running="+running+" linked="+linked+" native="+nativeStatus+" seen="+seen+" events="+events+" sent="+sent+" FET="+bodyLevel+"/"+ringLevel+"/"+sideLevel+" frames="+cabinetFrames;}
     void settings(int brightness,int rotation,boolean reverse,boolean ring){
         this.brightness=Math.max(0,Math.min(100,brightness));this.rotation=rotation;this.reverse=reverse;this.ring=ring;
     }
     void foreground(boolean value){foreground=value;if(!value)testColor=-1;}
-    void test(int rgb){if(running){testColor=rgb&0xffffff;testUntil=SystemClock.uptimeMillis()+2000;}}
+    // The end time first: the worker clears a colour whose window has passed, and must not see the new colour with the old window.
+    void test(int rgb){if(running){testUntil=SystemClock.uptimeMillis()+2000;testColor=rgb&0xffffff;}}
     void start(UsbIo.Port port,int address,int base){
         if(destroyed||running)return;
-        if(address<1||address>255||base<0||base>24)throw new IllegalArgumentException(UiText.t("LED 범위 오류"));
-        int gen=generation.incrementAndGet();running=true;sent=0;message=()->UiText.t("LED 보드 확인 중…");
+        if(address<1||address>255||base<0||base>24)throw new IllegalArgumentException(I18n.t(Msg.LED_RANGE_ERROR));
+        int gen=generation.incrementAndGet();running=true;sent=0;message=()->I18n.t(Msg.LED_STATUS_CHECKING);
         io.execute(()->{
             closeCurrent();if(gen!=generation.get()||destroyed)return;
             selectedPort=port;selectedAddress=address;this.base=base;failures=0;cabinetFrames=0;
@@ -62,31 +72,47 @@ final class LedOutput {
             if(gen!=generation.get()||destroyed)return;
             channel=new LedChannel(new UsbIo.Cdc(usb,current,115200),selectedAddress);
             channel.enableReplies();byte[] info=channel.request(0xf0);
-            if(info.length<8||!new String(info,0,8,StandardCharsets.US_ASCII).equals("15070-04"))throw new IOException(UiText.t("지원하는 LED 보드 응답이 아닙니다."));
+            if(info.length<8||!new String(info,0,8,StandardCharsets.US_ASCII).equals("15070-04"))throw new IOException(I18n.t(Msg.LED_UNSUPPORTED_BOARD));
             if(gen!=generation.get()||destroyed){closeCurrent();return;}
             last=null;lastRing=false;blank=false;lastPing=0;
-            pump=io.scheduleWithFixedDelay(()->poll(gen),0,33,TimeUnit.MILLISECONDS);
+            pump=io.scheduleWithFixedDelay(()->poll(gen),0,33,TimeUnit.MILLISECONDS);linked=true;
         }catch(Exception e){fail(gen,e);}
     }
     private void poll(int gen){
         if(gen!=generation.get()||destroyed)return;
         try{
-            if(!foreground){if(!blank){blackout();blank=true;}message=()->UiText.t("앱 백그라운드 · LED 꺼짐");return;}
+            if(!foreground){if(!blank){blackout();blank=true;}message=()->I18n.t(Msg.LED_STATUS_BACKGROUND);return;}
             if(blank){last=null;blank=false;}
-            long now=SystemClock.uptimeMillis();int[] colors=new int[11];
+            long now=SystemClock.uptimeMillis();int[] game=null;
             nativeStatus=0;seen=0;
             int[] snapshot=nativeLoaded?NativeBridge.ledSnapshot():null;
-            if(snapshot!=null&&snapshot.length==15){nativeStatus=snapshot[0];events=Integer.toUnsignedLong(snapshot[1]);seen=snapshot[2];if(nativeStatus==255)System.arraycopy(snapshot,3,colors,0,11);}
-            boolean test=testColor>=0&&now<testUntil;if(test)Arrays.fill(colors,testColor);
-            else testColor=-1;
+            if(snapshot!=null&&snapshot.length==15){nativeStatus=snapshot[0];events=Integer.toUnsignedLong(snapshot[1]);seen=snapshot[2];if(nativeStatus==255)game=Arrays.copyOfRange(snapshot,3,14);}
+            int[] welcome=lobby==null?null:lobby.frame(now);
+            int[] guide=setup==null?null:setup.frame(now);
+            boolean test=testColor>=0&&now<testUntil;if(!test)testColor=-1;
+            int[] colors=compose(game,welcome,guide,setup!=null&&setup.dark(),test?testColor:-1);
             int[] frame=LedFrames.physical(colors,brightness,rotation,reverse);
             send(frame,ring);
             // Confirm a quiet/static connection too. Failure only closes this LED port.
             if(now-lastPing>=2000){channel.request(0xf0);lastPing=now;}
             failures=0;
-            message=()->test?UiText.t("색상 테스트 · 2초 후 게임 연동"):UiText.t("LED 연동 중");
-            if(!test&&(nativeStatus!=255||(seen&255)==0))message=()->UiText.t("연결됨 · 게임 LED 신호 대기 (게임 조명 명령 대기)");
+            message=()->test?I18n.t(Msg.LED_STATUS_TESTING):I18n.t(Msg.LED_STATUS_LINKED);
+            if(!test&&welcome==null&&guide==null&&(nativeStatus!=255||(seen&255)==0))message=()->I18n.t(Msg.LED_STATUS_WAITING_GAME);
         }catch(Exception e){fail(gen,e);}
+    }
+    /**
+     * The eleven output values (eight button colours, then the body, ring and side levels) from the game's, the
+     * welcome screen's and setup's lighting. The welcome screen's and setup's colours replace the game's button
+     * colours; with lighting turned off in setup the body, ring and side go dark too. A colour test fills all.
+     */
+    static int[] compose(int[] game,int[] welcome,int[] guide,boolean setupDark,int test){
+        int[] colors=new int[11];
+        if(game!=null)System.arraycopy(game,0,colors,0,Math.min(11,game.length));
+        if(welcome!=null)System.arraycopy(welcome,0,colors,0,8);
+        if(guide!=null)System.arraycopy(guide,0,colors,0,8);
+        if(setupDark){colors[8]=0;colors[9]=0;colors[10]=0;}
+        if(test>=0)Arrays.fill(colors,test);
+        return colors;
     }
     private void send(int[] frame,boolean useRing)throws IOException{
         boolean changed=false;
@@ -108,6 +134,7 @@ final class LedOutput {
     }
     private void closeCurrent(){closeCurrent(true);}
     private void closeCurrent(boolean clear){
+        linked=false;
         if(pump!=null){pump.cancel(false);pump=null;}
         if(retry!=null){retry.cancel(false);retry=null;}
         if(clear)try{blackout();}catch(Exception ignored){}
@@ -117,12 +144,12 @@ final class LedOutput {
         closeCurrent(false);
         if(gen!=generation.get()||destroyed)return;
         int seconds=1<<Math.min(failures++,3);
-        message=()->UiText.t("LED 재연결 대기: ")+seconds+UiText.t("초 · ")+error.getMessage();
+        message=()->I18n.t(Msg.LED_STATUS_RETRY,seconds,error.getMessage());
         // Keep the enabled session alive so polling a settings panel cannot start a duplicate worker.
         retry=io.schedule(()->open(gen),seconds,TimeUnit.SECONDS);
     }
     void stop(){
-        if(destroyed)return;generation.incrementAndGet();running=false;testColor=-1;message=()->UiText.t("LED 연동 OFF");io.execute(this::closeCurrent);
+        if(destroyed)return;generation.incrementAndGet();running=false;testColor=-1;message=()->I18n.t(Msg.LED_STATUS_OFF);io.execute(this::closeCurrent);
     }
     void destroy(){
         if(destroyed)return;destroyed=true;generation.incrementAndGet();running=false;io.execute(this::closeCurrent);io.shutdown();

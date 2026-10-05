@@ -68,7 +68,12 @@ public final class KanadeModule extends XposedModule {
             hook(activity.getDeclaredMethod("onResume")).intercept(chain->{Object result=chain.proceed();if(matches(chain.getThisObject()))session.resume();return result;});
             hook(activity.getDeclaredMethod("onConfigurationChanged",android.content.res.Configuration.class)).intercept(chain->{Object result=chain.proceed();if(matches(chain.getThisObject()))session.layoutChanged();return result;});
             hook(activity.getDeclaredMethod("onWindowFocusChanged",boolean.class)).intercept(chain->{if(matches(chain.getThisObject())){if((Boolean)chain.getArg(0))session.focusGained();else session.focusLost();}return chain.proceed();});
-            hook(activity.getDeclaredMethod("onDestroy")).intercept(chain->{if(matches(chain.getThisObject())){session.destroy();session=null;}return chain.proceed();});
+            hook(activity.getDeclaredMethod("onDestroy")).intercept(chain->{
+                GameSession ending=matches(chain.getThisObject())?session:null;
+                if(ending!=null){ending.destroy();session=null;}
+                // The original onDestroy shuts Unity down; surfaces it may still use are released only afterwards.
+                try{return chain.proceed();}finally{if(ending!=null)ending.afterActivityDestroyed();}
+            });
             Method generic=Activity.class.getDeclaredMethod("dispatchGenericMotionEvent",MotionEvent.class);
             hook(generic).intercept(chain->{if(matches(chain.getThisObject())&&session.motion((MotionEvent)chain.getArg(0)))return true;return chain.proceed();});
             hook(Activity.class.getDeclaredMethod("setRequestedOrientation",int.class)).intercept(chain->{

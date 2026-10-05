@@ -14,15 +14,13 @@ import java.util.function.Consumer
 
 /** Informational dialogs share the existing theme, back behavior and input guard. */
 internal object LicenseUi {
-    private fun tr(ko: String, zh: String) = GameUi.tr(ko, zh)
-
     @JvmStatic fun show(activity: Activity, protect: Consumer<AlertDialog>?) {
         lateinit var panel: AlertDialog
         panel = NativeUi.dialog(activity) {
             LicenseScreen(BuildConfig.VERSION_NAME, LicenseText.SOURCE_URL, LicenseText.files().toList(), onBack = { panel.dismiss() },
                 onSource = {
                     try { activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(LicenseText.SOURCE_URL))) }
-                    catch (_: android.content.ActivityNotFoundException) { Toast.makeText(activity, tr("링크를 열 수 있는 앱이 없습니다.", "没有可打开链接的应用。"), Toast.LENGTH_SHORT).show() }
+                    catch (_: android.content.ActivityNotFoundException) { Toast.makeText(activity, str(Msg.LICENSE_NO_BROWSER), Toast.LENGTH_SHORT).show() }
                 },
                 onFile = { name -> document(activity, name, protect) })
         }

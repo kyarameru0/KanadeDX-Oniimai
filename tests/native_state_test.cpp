@@ -5,6 +5,7 @@
 #include "../app/src/main/cpp/stats_state.h"
 #include "../app/src/main/cpp/game_ui_state.h"
 #include "../app/src/main/cpp/boot_input_state.h"
+#include "../app/src/main/cpp/display_frame_state.h"
 #include "../app/src/main/cpp/game_aime_state.h"
 #include "../app/src/main/cpp/game_aime_led_state.h"
 #include "../app/src/main/cpp/game_aime_error_state.h"
@@ -332,6 +333,75 @@ extern "C" EXPORT int run_tests(){
     hide.update(objects,first,true);first->alive=false;hide.update(objects,nullptr,false);
     CHECK(hide.handle==0);CHECK(objects.invalidWrites==0);CHECK(objects.releases==4);
     hide.update(objects,nullptr,true);CHECK(hide.handle==0);CHECK(objects.invalidWrites==0);
+    DisplayFrameState output;
+    CHECK(output.phase==DisplayFrameState::WAITING&&output.updates==0);
+    output.startup(false);CHECK(output.updates==0);
+    output.startup(true);CHECK(output.phase==DisplayFrameState::STARTUP&&output.updates==1);
+    output.startup(true);CHECK(output.updates==2);
+    output.startup(false);CHECK(output.phase==DisplayFrameState::WAITING&&output.updates==2);
+    output.startup(true);CHECK(output.phase==DisplayFrameState::STARTUP&&output.updates==3);
+    output.starting();CHECK(output.phase==DisplayFrameState::WAITING&&output.updates==3);
+    output.startup(true);CHECK(output.phase==DisplayFrameState::WAITING&&output.updates==3);
+    output.game();CHECK(output.phase==DisplayFrameState::GAME&&output.updates==4);
+    output.startup(true);output.startup(false);CHECK(output.phase==DisplayFrameState::GAME&&output.updates==4);
+    output.game();CHECK(output.updates==5);
+    // Relayout after the output moves: immediately, then every EVERY frames for FRAMES frames, again on the way back.
+    GameUiState::Relayout relayout;int due=0;
+    for(int i=0;i<500;i++)if(relayout.frame(false))++due;
+    CHECK(due==0);
+    CHECK(relayout.frame(true));
+    for(int i=1;i<GameUiState::Relayout::FRAMES;i++)if(relayout.frame(true))++due;
+    CHECK(due==GameUiState::Relayout::FRAMES/GameUiState::Relayout::EVERY-1);
+    due=0;for(int i=0;i<500;i++)if(relayout.frame(true))++due;
+    CHECK(due==0);
+    CHECK(relayout.frame(false));
+    // Stages after Start: a stray boot frame is ignored, a new Start clears them, phase and counter are untouched.
+    DisplayFrameState screens;screens.reached(DisplayFrameState::LOADED);CHECK(screens.stages==0);
+    screens.starting();screens.game();CHECK(screens.stages==0);
+    screens.reached(DisplayFrameState::LOADED);screens.reached(DisplayFrameState::LOADED);
+    CHECK(screens.stages==DisplayFrameState::LOADED&&screens.phase==DisplayFrameState::GAME&&screens.updates==1);
+    screens.starting();CHECK(screens.stages==0&&screens.phase==DisplayFrameState::GAME);
+    DisplayFrameState directGame;directGame.game();directGame.startup(true);directGame.starting();
+    CHECK(directGame.phase==DisplayFrameState::GAME&&directGame.updates==1);
+
+    // Cabinet TEST/SERVICE enter the existing game system-input pipeline.
+    for(int p=0;p<2;p++){
+        InputState cabinet;
+        for(int system=0;system<2;system++){
+            uint32_t mask=system==0?512:1024;
+            cabinet.submit(0,mask,p,true,100);cabinet.frame(100);
+            CHECK(cabinet.button(system,false,100));CHECK(cabinet.button(system,true,100));
+            CHECK(!cabinet.button(1-system,false,100));
+            for(int id=2;id<=20;id++)CHECK(!cabinet.button(id,false,100));
+            CHECK(!cabinet.button(-1,false,100));
+            cabinet.submit(0,mask,p,true,110);cabinet.frame(110);
+            CHECK(cabinet.button(system,false,110));CHECK(!cabinet.button(system,true,110));
+            cabinet.submit(0,0,p,true,111);cabinet.frame(120);
+            CHECK(!cabinet.button(system,false,120));CHECK(!cabinet.button(system,true,120));
+            cabinet.submit(0,mask,p,true,121);cabinet.submit(0,0,p,true,122);cabinet.frame(130);
+            CHECK(cabinet.button(system,true,130));CHECK(cabinet.button(system,false,130));
+            cabinet.frame(140);CHECK(!cabinet.button(system,false,140));
+        }
+        cabinet.submit(1,1793,p,true,200);cabinet.frame(200);
+        CHECK(cabinet.button(0,true,200)&&cabinet.button(1,true,200));
+        CHECK(cabinet.button(p==0?2:11,true,200));CHECK(cabinet.button(p==0?10:19,true,200));
+        cabinet.submit(0,1536,p,false,201);cabinet.frame(201);
+        CHECK(!cabinet.button(0,false,201)&&!cabinet.button(1,true,201));
+        cabinet.submit(0,1536,p,true,300);cabinet.frame(300);
+        CHECK(!cabinet.button(0,false,801)&&!cabinet.button(1,true,801)); // Stale USB release.
+        cabinet.submit(0,1536,p,true,900);cabinet.frame(900);cabinet.reset();
+        CHECK(!cabinet.button(0,false,900)&&!cabinet.button(1,true,900));
+        cabinet.submit(0,1u<<11,p,true,1000);cabinet.frame(1000);
+        CHECK(cabinet.frameButtons==0); // No unspecified transport bits.
+    }
+    BootInputState systemLaunch;
+    systemLaunch.submit(0,1536,true,10);CHECK(!systemLaunch.take(true,10));
+    systemLaunch.submit(0,0,true,11);systemLaunch.submit(0,512,true,12);CHECK(!systemLaunch.take(true,12));
+    systemLaunch.submit(0,1537,true,13);CHECK(systemLaunch.take(true,13));
+    systemLaunch.started();CHECK(!systemLaunch.submit(0,1537,true,14));
+    CHECK(systemLaunch.submit(0,1536,true,15)); // System keys cannot prolong a launch-button hold.
+    CHECK(!systemLaunch.take(true,15));
+
     BootInputState boot;
     CHECK(!boot.submit(1,0,false,100));CHECK(!boot.take(true,100));
     CHECK(boot.submit(0,0,true,110));CHECK(!boot.take(true,110));
@@ -344,6 +414,15 @@ extern "C" EXPORT int run_tests(){
     bootRing.started();CHECK(!bootRing.submit(0,256,true,210));CHECK(!bootRing.submit(4,256,true,220));
     CHECK(bootRing.submit(0,0,true,230));CHECK(bootRing.submit(0,1,true,240));CHECK(!bootRing.take(true,240));
     BootInputState stale;stale.submit(1,0,true,1);CHECK(!stale.take(true,502));
+    BootInputState externalStart;
+    CHECK(externalStart.requestManual(100));
+    externalStart.submit(0,0,false,101); // USB input OFF does not cancel an explicit UI click.
+    CHECK(externalStart.take(true,102));CHECK(!externalStart.take(true,103));
+    externalStart.requestManual(200);CHECK(!externalStart.take(false,201));
+    CHECK(!externalStart.take(true,202)); // An unavailable button cannot retain a stale click.
+    externalStart.requestManual(300);CHECK(!externalStart.take(true,801));
+    externalStart.requestManual(900);externalStart.started();
+    CHECK(!externalStart.take(true,901));CHECK(!externalStart.requestManual(902));
     stale.submit(0,0,true,510);stale.submit(1,0,true,520);stale.submit(0,0,true,530);CHECK(stale.take(true,540)); // short tap retained
     BootInputState manual;manual.started();manual.submit(1,1,true,10);CHECK(!manual.take(true,10));
     BootInputState blocked;blocked.submit(1,1,true,10);blocked.submit(1,1,false,11);CHECK(!blocked.take(true,12));

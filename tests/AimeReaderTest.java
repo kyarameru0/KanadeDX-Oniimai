@@ -29,6 +29,7 @@ public final class AimeReaderTest {
         System.arraycopy(data,0,body,6,data.length);return AimeProtocol.frame(body);
     }
     public static void main(String[] args)throws Exception{
+        I18n.language("ko"); // status assertions below use the Korean catalogue
         testEmptyFieldCadence();
         testRfCommandRecovery();
         AtomicInteger opens=new AtomicInteger(),accepted=new AtomicInteger(),transportErrors=new AtomicInteger(),ready=new AtomicInteger(0),reads=new AtomicInteger(),detects=new AtomicInteger(),radio=new AtomicInteger(),color=new AtomicInteger(-1),nativeColor=new AtomicInteger(-1);

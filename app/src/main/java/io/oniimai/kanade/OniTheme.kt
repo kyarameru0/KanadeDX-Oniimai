@@ -42,7 +42,6 @@ object OniTokens {
     val artworkRadius = 8.dp
     /** Matches Miuix CardDefaults.CornerRadius so Android-View overlays line up with Compose cards. */
     val cardRadius = 16.dp
-    val shortcutWidth = 116.dp
     val shortcutHeight = 36.dp
     val headerAction = 36.dp
     /** Large-title and section-title start edge: card margin (16) + row inset (16). */
@@ -69,7 +68,8 @@ object OniTokens {
     val clock = 48.sp
     const val motion = 180
 }
-internal fun tr(ko: String, zh: String) = GameUi.tr(ko, zh)
+/** Message text in the current UI language (I18n; catalogues under locales/). */
+internal fun str(id: Int, vararg args: Any?): String = I18n.t(id, *args)
 /** Validation/error text; the same red the Android-View helpers use. */
 internal val ERROR_TEXT = androidx.compose.ui.graphics.Color(GameUi.ERROR)
 
@@ -99,20 +99,49 @@ internal fun Action(label: String, primary: Boolean = false, modifier: Modifier 
 
 @Composable
 internal fun ShortcutAction(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val scale = androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Button(onClick = onClick, modifier = Modifier.fillMaxWidth().height(OniTokens.shortcutHeight * scale),
+    // Wrap the complete label at its real font size, with a 48dp touch target.
+    // Let the height grow if a large accessibility font / narrow window needs wrapping.
+    Box(modifier.sizeIn(minWidth = OniTokens.target, minHeight = OniTokens.target), contentAlignment = Alignment.Center) {
+        Button(onClick = onClick,
             minHeight = OniTokens.shortcutHeight, cornerRadius = OniTokens.compactRadius,
             insideMargin = PaddingValues(horizontal = OniTokens.gap, vertical = OniTokens.space / 2)) {
-            Text(label, fontSize = OniTokens.caption, maxLines = 1, color = MiuixTheme.colorScheme.onSecondaryVariant)
+            Text(label, fontSize = OniTokens.caption, textAlign = TextAlign.Center,
+                color = MiuixTheme.colorScheme.onSecondaryVariant)
         }
+    }
+}
+
+/**
+ * The phone's back for one page window. A page with its own way back (setup's steps) answers it through
+ * [PageBack]; with none, back closes the page. The newest handler answers.
+ */
+internal class PageBacks {
+    private val handlers = ArrayList<() -> Unit>()
+    fun add(handler: () -> Unit) { handlers.add(handler) }
+    fun remove(handler: () -> Unit) { handlers.remove(handler) }
+    /** Answers one back press; false when nothing on the page takes it. */
+    fun press(): Boolean { val handler = handlers.lastOrNull() ?: return false; handler(); return true }
+}
+
+/** The back presses of the page window this composition is in; none outside one. */
+internal val LocalPageBacks = staticCompositionLocalOf<PageBacks?> { null }
+
+/** Takes the phone's back for as long as this is composed, instead of the page window closing. */
+@Composable
+internal fun PageBack(onBack: () -> Unit) {
+    val backs = LocalPageBacks.current ?: return
+    val current by rememberUpdatedState(onBack)
+    DisposableEffect(backs) {
+        val handler: () -> Unit = { current() }
+        backs.add(handler)
+        onDispose { backs.remove(handler) }
     }
 }
 
 /** System-style back arrow; replaces the former text button so the title owns the header. */
 @Composable
 internal fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(onClick = onClick, modifier = modifier.padding(start = OniTokens.gap).semantics { contentDescription = tr("뒤로", "返回") }) {
+    IconButton(onClick = onClick, modifier = modifier.padding(start = OniTokens.gap).semantics { contentDescription = str(Msg.COMMON_BACK) }) {
         Icon(MiuixIcons.Useful.Back, contentDescription = null, tint = MiuixTheme.colorScheme.onBackground)
     }
 }

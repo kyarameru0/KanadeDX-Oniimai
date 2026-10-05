@@ -13,7 +13,7 @@ public final class Protocol {
     public static int u16(byte[] b,int o) { return u(b[o]) | u(b[o+1])<<8; }
     public static long u32(byte[] b,int o) { return (long)u16(b,o) | (long)u16(b,o+2)<<16; }
     public static void range(int value,int min,int max) {
-        if(value<min || value>max) throw new IllegalArgumentException(UiText.t("범위: ")+min+"–"+max);
+        if(value<min || value>max) throw new IllegalArgumentException(I18n.t(Msg.NUMBER_RANGE,min,max));
     }
     public static byte[] command(int cmd, byte[] payload) {
         range(cmd,0,255); range(payload.length,0,255);
@@ -52,7 +52,7 @@ public final class Protocol {
         public final boolean[] pressed=new boolean[34];
         public final int[] raw=new int[34],baseline=new int[34];
         public TouchDebug(byte[] b) {
-            if(b.length!=144) throw new IllegalArgumentException(UiText.t("터치 디버그 길이: ")+b.length+UiText.t(" (144 필요)"));
+            if(b.length!=144) throw new IllegalArgumentException(I18n.t(Msg.PROTOCOL_TOUCH_LENGTH,b.length));
             for(int i=0;i<34;i++) {
                 pressed[i]=(u(b[i/8])&(1<<(i%8)))!=0;
                 raw[i]=u16(b,8+2*i);baseline[i]=u16(b,76+2*i);
@@ -78,7 +78,7 @@ public final class Protocol {
     public static final class Config {
         private final byte[] bytes;
         public Config(byte[] bytes) {
-            if(bytes.length!=156) throw new IllegalArgumentException(UiText.t("설정 형식이 다릅니다: ")+bytes.length+UiText.t(" bytes. 쓰기를 중단합니다."));
+            if(bytes.length!=156) throw new IllegalArgumentException(I18n.t(Msg.PROTOCOL_CONFIG_FORMAT,bytes.length));
             this.bytes=bytes.clone();
         }
         public int finger(int zone) {range(zone,0,33);return u16(bytes,zone*4);}

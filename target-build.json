@@ -58,7 +58,8 @@
   },
   "ui_layout": {
     "settings_typeinfo": "0x5691030",
-    "main_group": "0x20"
+    "main_group": "0x20",
+    "prev_rotation": "0xfc"
   },
   "ui_policy": "Compact OFF once per game-data migration, then preserve user choices. External output temporarily hides the game Display UI CanvasGroup and disables its interaction/raycasts; exact original state restored on the game Update thread.",
   "boot_functions": {
@@ -67,13 +68,16 @@
     "canvas": "0x22fa148",
     "button_press": "0x50cbc64",
     "active": "0x5263058",
-    "interactable": "0x5248898"
+    "interactable": "0x5248898",
+    "behaviour_active": "0x504df2c"
   },
   "boot_layout": {
     "start_button": "0x60",
-    "start_callback": "0xd0"
+    "start_callback": "0xd0",
+    "main_canvas": "0x30",
+    "processing_ui": "0x80"
   },
-  "boot_source": "Fresh controller edge presses the real startup Button on EventSystem.Update; manual start and held-input suppression share a one-shot gate.",
+  "boot_source": "Fresh controller edge presses the real startup Button on EventSystem.Update; manual start and held-input suppression share a one-shot gate. Startup readiness requires a visible main Canvas and an inactive processing UI (streaming download/conversion/cache); shared with deferred first-run setup.",
   "album_functions": {
     "instance": "0x2426c2c",
     "jacket": "0x2426df8",

@@ -18,7 +18,14 @@ interface DashboardHost {
     String connectionDescription();
     String ledDescription();
     String displayDescription();
+    /** Status tones for the device widget (NativeSettings.INFO/OK/WAIT); NONE lets the widget fall back to the text. */
+    default int inputTone(){return NativeSettings.NONE;}
+    default int ledTone(){return NativeSettings.NONE;}
+    default int displayTone(){return NativeSettings.NONE;}
     boolean externalActive();
+    default boolean requestStartup(){return false;}
+    /** Shared button lighting for the external welcome screen; null when the host drives no LEDs. */
+    default LobbyLights lobbyLights(){return null;}
     boolean ledEnabled();
     void showSettings();
     /** Called on the UI thread about every 150 ms. Supply current stats using view.update(). */

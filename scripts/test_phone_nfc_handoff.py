@@ -18,6 +18,7 @@ for fixture in sorted((root / 'tests/phone-nfc-handoff').glob('*.fixture')):
     sources.append(source)
 production = root / 'app/src/main/java/io/oniimai/kanade'
 sources += [Path(a.reader_source) if a.reader_source else production / 'PhoneNfcReader.java', production / 'PhoneScan.java']
+sources += [production / (name + '.java') for name in ('I18n', 'I18nCatalog', 'Msg')]
 
 def jdk(name):
     return str(Path(a.java_home) / 'bin' / (name + ('.exe' if os.name == 'nt' else ''))) if a.java_home else name

@@ -57,7 +57,7 @@ python scripts/verify_target.py --apk C:/AuthorizedLocalCopy/KanadeDX-260207.063
 python scripts/verify_target.py --apk C:/AuthorizedLocalCopy/KanadeDX-260721.1649.apk
 ```
 
-This reads an authorized local file and selects its exact build profile, checking APK/library/metadata SHA-256, the ELF build ID, 55 RVA mappings and hashed function fingerprints per build. Unknown builds fail verification. It does not extract or modify the game. Building and host tests do not require this file. Never commit the APK or analysis outputs.
+This reads an authorized local file and selects its exact build profile, checking APK/library/metadata SHA-256, the ELF build ID, 56 RVA mappings and hashed function fingerprints per build. Unknown builds fail verification. It does not extract or modify the game. Building and host tests do not require this file. Never commit the APK or analysis outputs.
 
 ## Source and dependency archives
 

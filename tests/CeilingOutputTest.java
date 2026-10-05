@@ -7,6 +7,7 @@ public final class CeilingOutputTest {
     static void check(boolean b,String label){checks++;if(!b)throw new AssertionError(label);}
     static void await(BooleanSupplier b,String label)throws Exception{long end=System.currentTimeMillis()+3000;while(!b.getAsBoolean()&&System.currentTimeMillis()<end)Thread.sleep(5);check(b.getAsBoolean(),label);}
     public static void main(String[] args)throws Exception{
+        I18n.language("ko"); // status assertions below use the Korean catalogue
         AtomicReference<UsbIo.Hid> handle=new AtomicReference<>();
         int[] saved=NativeBridge.snapshot;
         NativeBridge.snapshot=new int[]{255,1,1<<11,0,0,0,0,0,0,0,0,0,0,0,0x804020};

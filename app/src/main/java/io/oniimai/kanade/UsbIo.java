@@ -54,8 +54,8 @@ public final class UsbIo {
         List<Port> available=ports(manager);String[] identities=new String[available.size()];
         for(int i=0;i<identities.length;i++)identities[i]=available.get(i).stableId();
         int found=PortSelection.unique(identities,selected.stableId());
-        if(found==-2)throw new IOException(UiText.t("동일한 USB 장치가 여러 개입니다. 포트를 다시 선택하세요."));
-        if(found<0)throw new IOException(UiText.t("저장된 USB 포트 연결 대기: ")+selected.name);
+        if(found==-2)throw new IOException(I18n.t(Msg.USB_DUPLICATE));
+        if(found<0)throw new IOException(I18n.t(Msg.USB_WAITING_SAVED,selected.name));
         return available.get(found);
     }
     private static Map<Integer,String> names(UsbDeviceConnection conn) {
@@ -78,7 +78,28 @@ public final class UsbIo {
     }
     private static UsbInterface byId(UsbDevice d,int id) throws IOException {
         for(int n=0;n<d.getInterfaceCount();n++)if(d.getInterface(n).getId()==id && d.getInterface(n).getAlternateSetting()==0)return d.getInterface(n);
-        throw new IOException(UiText.t("USB 인터페이스를 찾을 수 없습니다: ")+id);
+        throw new IOException(I18n.t(Msg.USB_NO_INTERFACE,id));
+    }
+    /**
+     * Classifies CDC bulk reads. Android returns a negative count both for an idle timeout and for a
+     * transfer error, so the time the call took tells them apart: an idle read waits roughly the whole
+     * timeout, an error returns at once. Fast failures back off briefly, and only an unbroken run of them
+     * lasting FAILURE_WINDOW_MS is reported, so one glitch never drops a working port.
+     */
+    static final class ReadHealth {
+        static final int TIMEOUT_MS=200,FAST_MS=50,BACKOFF_MS=20,FAILURE_WINDOW_MS=1000;
+        static final int DATA=0,IDLE=1,BACKOFF=2,FAILED=3;
+        private long failingSince=-1;
+        int observe(int count,long elapsedNanos,long nowNanos){
+            if(count>0){failingSince=-1;return DATA;}
+            boolean fast=elapsedNanos<TimeUnit.MILLISECONDS.toNanos(FAST_MS);
+            // A zero-length packet is a successful transfer; pause only so a stream of them cannot spin.
+            if(count==0){failingSince=-1;return fast?BACKOFF:IDLE;}
+            // A full-length timeout is a quiet but healthy link.
+            if(!fast){failingSince=-1;return IDLE;}
+            if(failingSince<0){failingSince=nowNanos;return BACKOFF;}
+            return nowNanos-failingSince>=TimeUnit.MILLISECONDS.toNanos(FAILURE_WINDOW_MS)?FAILED:BACKOFF;
+        }
     }
     public static final class Cdc implements AutoCloseable {
         private final UsbDeviceConnection conn;private UsbInterface control,data;private UsbEndpoint in,out;
@@ -89,9 +110,9 @@ public final class UsbIo {
         /** Explicit per-port line state: Windows maimai NFC uses DTR only (1). */
         public Cdc(UsbManager manager,Port port,int baud,int lineState) throws IOException {
             if(lineState<0||lineState>3)throw new IllegalArgumentException("CDC line state");
-            if(port.hid)throw new IOException(UiText.t("시리얼 포트가 아닙니다."));
-            if(!manager.hasPermission(port.device))throw new IOException(UiText.t("USB 권한을 먼저 허용하세요."));
-            conn=manager.openDevice(port.device);if(conn==null)throw new IOException(UiText.t("USB 열기 실패"));
+            if(port.hid)throw new IOException(I18n.t(Msg.USB_NOT_SERIAL));
+            if(!manager.hasPermission(port.device))throw new IOException(I18n.t(Msg.USB_PERMISSION_FIRST));
+            conn=manager.openDevice(port.device);if(conn==null)throw new IOException(I18n.t(Msg.USB_OPEN_FAILED));
             try {
                 control=byId(port.device,port.controlId);int dataId=-1;byte[] raw=conn.getRawDescriptors();int current=-1;
                 if(raw!=null)for(int p=0;p+2<=raw.length;) {
@@ -101,37 +122,47 @@ public final class UsbIo {
                     p+=len;
                 }
                 if(dataId<0)dataId=control.getId()+1;
-                data=byId(port.device,dataId);if(data.getInterfaceClass()!=10)throw new IOException(UiText.t("CDC 데이터 인터페이스가 아닙니다."));
+                data=byId(port.device,dataId);if(data.getInterfaceClass()!=10)throw new IOException(I18n.t(Msg.USB_NOT_CDC_DATA));
                 controlClaimed=conn.claimInterface(control,true);
-                if(!controlClaimed)throw new IOException(UiText.t("USB 포트 사용 중 또는 권한 오류"));
+                if(!controlClaimed)throw new IOException(I18n.t(Msg.USB_BUSY));
                 dataClaimed=conn.claimInterface(data,true);
-                if(!dataClaimed)throw new IOException(UiText.t("USB 포트 사용 중 또는 권한 오류"));
+                if(!dataClaimed)throw new IOException(I18n.t(Msg.USB_BUSY));
                 for(int n=0;n<data.getEndpointCount();n++) {
                     UsbEndpoint e=data.getEndpoint(n);if(e.getType()!=UsbConstants.USB_ENDPOINT_XFER_BULK)continue;
                     if(e.getDirection()==UsbConstants.USB_DIR_IN)in=e;else out=e;
                 }
-                if(in==null || out==null)throw new IOException(UiText.t("CDC bulk endpoint 없음"));
+                if(in==null || out==null)throw new IOException(I18n.t(Msg.USB_NO_BULK));
                 byte[] coding={(byte)baud,(byte)(baud>>8),(byte)(baud>>16),(byte)(baud>>24),0,0,8};
-                if(conn.controlTransfer(0x21,0x20,0,control.getId(),coding,coding.length,1000)!=7)throw new IOException(UiText.t("115200/9600 8N1 설정 실패"));
+                if(conn.controlTransfer(0x21,0x20,0,control.getId(),coding,coding.length,1000)!=7)throw new IOException(I18n.t(Msg.USB_LINE_CODING));
                 lineStateTouched=true;
-                if(conn.controlTransfer(0x21,0x22,lineState,control.getId(),null,0,1000)<0)throw new IOException(UiText.t("DTR/RTS 설정 실패"));
+                if(conn.controlTransfer(0x21,0x22,lineState,control.getId(),null,0,1000)<0)throw new IOException(I18n.t(Msg.USB_LINE_STATE));
             } catch(Exception e) {close();throw e instanceof IOException?(IOException)e:new IOException(e);}
         }
         public synchronized void start(Bytes callback,Failure failure) {
             if(!open||reader!=null)throw new IllegalStateException("CDC reader already started or closed");
             reader=new Thread(()->{
-                byte[] b=new byte[1024];
-                try {while(open) {int n=conn.bulkTransfer(in,b,b.length,200);if(!open)break;if(n>0)callback.accept(b,n);}}
+                byte[] b=new byte[1024];ReadHealth health=new ReadHealth();
+                try {while(open) {
+                    long started=System.nanoTime();
+                    int n=conn.bulkTransfer(in,b,b.length,ReadHealth.TIMEOUT_MS);if(!open)break;
+                    long now=System.nanoTime();
+                    switch(health.observe(n,now-started,now)){
+                        case ReadHealth.DATA:callback.accept(b,n);break;
+                        case ReadHealth.BACKOFF:Thread.sleep(ReadHealth.BACKOFF_MS);break;
+                        case ReadHealth.FAILED:throw new IOException(I18n.t(Msg.USB_READ_FAILING,n));
+                        default:break;
+                    }
+                }}
                 catch(Exception e) {if(open)failure.accept(e.toString());}
             },"Oniimai-CDC-"+control.getId());reader.start();
         }
         public synchronized void write(byte[] bytes) throws IOException {
-            if(!open)throw new IOException(UiText.t("포트가 닫혔습니다."));
+            if(!open)throw new IOException(I18n.t(Msg.USB_CLOSED));
             for(int offset=0;offset<bytes.length;) {
-                if(!open)throw new IOException(UiText.t("포트가 닫혔습니다."));
+                if(!open)throw new IOException(I18n.t(Msg.USB_CLOSED));
                 int count=Math.min(32,bytes.length-offset);
                 int n=conn.bulkTransfer(out,bytes,offset,count,1000);
-                if(n<=0)throw new IOException(UiText.t("USB 전송 실패 (")+offset+"/"+bytes.length+")");offset+=n;
+                if(n<=0)throw new IOException(I18n.t(Msg.USB_WRITE_FAILED,offset,bytes.length));offset+=n;
             }
         }
         public void close() {
@@ -162,17 +193,17 @@ public final class UsbIo {
             Output(byte[] report){buffer.put(report).flip();}
         }
         public Hid(UsbManager manager,Port port,Bytes listener,Failure failure) throws IOException {
-            if(!manager.hasPermission(port.device))throw new IOException(UiText.t("HID USB 권한을 허용하세요."));
-            conn=manager.openDevice(port.device);if(conn==null)throw new IOException(UiText.t("HID 열기 실패"));
+            if(!manager.hasPermission(port.device))throw new IOException(I18n.t(Msg.USB_HID_PERMISSION));
+            conn=manager.openDevice(port.device);if(conn==null)throw new IOException(I18n.t(Msg.USB_HID_OPEN_FAILED));
             try {
                 intf=byId(port.device,port.controlId);
-                if(!port.hid || !conn.claimInterface(intf,true))throw new IOException(UiText.t("HID 인터페이스 사용 중"));
+                if(!port.hid || !conn.claimInterface(intf,true))throw new IOException(I18n.t(Msg.USB_HID_BUSY));
                 UsbEndpoint ep=null,out=null;
                 for(int n=0;n<intf.getEndpointCount();n++){
                     UsbEndpoint e=intf.getEndpoint(n);if(e.getType()!=3)continue;
                     if(e.getDirection()==128)ep=e;else out=e;
                 }
-                if(ep==null || !request.initialize(conn,ep))throw new IOException(UiText.t("HID interrupt endpoint 없음"));
+                if(ep==null || !request.initialize(conn,ep))throw new IOException(I18n.t(Msg.USB_HID_NO_ENDPOINT));
                 // A missing OUT endpoint uses the standard HID SET_REPORT path.
                 // Failure to initialise an existing endpoint does not guess another transport.
                 if(out!=null){interruptOutput=outputRequest.initialize(conn,out);outputFailed=!interruptOutput;}
@@ -183,7 +214,7 @@ public final class UsbIo {
                         if(!queued){
                             synchronized(submissionLock){
                                 if(!open)break;buffer.clear();
-                                if(!request.queue(buffer))throw new IOException(UiText.t("HID queue 실패"));queued=true;
+                                if(!request.queue(buffer))throw new IOException(I18n.t(Msg.USB_HID_QUEUE));queued=true;
                             }
                         }
                         UsbRequest done;try {done=conn.requestWait(1000);}catch(TimeoutException timeout){continue;}
@@ -191,7 +222,7 @@ public final class UsbIo {
                         // requestWait returns completions for every endpoint on this handle.
                         // Only this thread drains them, so output never steals a button report.
                         if(done==outputRequest){Output output=pendingOutput;if(output!=null)output.completion.complete(output.buffer.position());continue;}
-                        if(done!=request)throw new IOException(UiText.t("HID 연결 종료"));queued=false;
+                        if(done!=request)throw new IOException(I18n.t(Msg.USB_HID_CLOSED));queued=false;
                         int n=buffer.position();buffer.flip();byte[] bytes=new byte[n];buffer.get(bytes);if(n>0)listener.accept(bytes,n);
                     }}catch(Exception e){
                         outputFailed=true;Output output=pendingOutput;if(output!=null)output.completion.completeExceptionally(e);

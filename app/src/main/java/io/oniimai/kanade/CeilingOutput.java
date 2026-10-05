@@ -12,6 +12,8 @@ final class CeilingOutput {
     private volatile boolean enabled=true,foreground=true,destroyed;
     private volatile int brightness=100,testColor=-1,state;
     private volatile long testUntil,sent;
+    /** First-run setup's lighting, whose average colour replaces the game's while setup is open. */
+    private volatile SetupLights setup;
     private UsbIo.Hid current;
     private int last=-1;
     private long retryAt;
@@ -19,17 +21,20 @@ final class CeilingOutput {
         this.transport=transport;this.nativeLoaded=nativeLoaded;
         worker.scheduleWithFixedDelay(this::poll,0,33,TimeUnit.MILLISECONDS);
     }
+    void setup(SetupLights lights){setup=lights;}
     void settings(boolean enabled,int brightness){this.enabled=enabled;this.brightness=Math.max(0,Math.min(100,brightness));}
     void foreground(boolean foreground){this.foreground=foreground;if(!foreground)testColor=-1;}
-    void test(int color){testColor=color&0xffffff;testUntil=SystemClock.uptimeMillis()+2000;}
-    private static String tr(String ko,String zh){return "zh-Hans".equals(UiText.language())?zh:ko;}
+    // The end time first, as in LedOutput.test.
+    void test(int color){testUntil=SystemClock.uptimeMillis()+2000;testColor=color&0xffffff;}
+    /** Lit and writable: on, in the foreground, and an IO4 port answering (with or without game colours). */
+    boolean ready(){int current=state;return enabled&&foreground&&(current==1||current==2||current==4);}
     String summary(){
-        if(!enabled)return tr("천장 RGB 조명 OFF","顶部 RGB 灯已关闭");
-        if(state==0)return tr("천장 RGB · IO4 연결 대기","顶部 RGB · 等待 IO4 连接");
-        if(state==3)return tr("천장 RGB · IO4 출력 확인 필요","顶部 RGB · 请检查 IO4 输出");
-        if(state==4)return tr("천장 RGB · 게임 색상 연결 실패","顶部 RGB · 无法读取游戏颜色");
-        if(!foreground)return tr("천장 RGB · 백그라운드 소등","顶部 RGB · 后台熄灯");
-        return state==2?tr("천장 RGB · 게임 연동 중","顶部 RGB · 游戏联动中"):tr("천장 RGB · 게임 조명 신호 대기","顶部 RGB · 等待游戏灯光信号");
+        if(!enabled)return I18n.t(Msg.CEILING_STATUS_OFF);
+        if(state==0)return I18n.t(Msg.CEILING_STATUS_WAITING_IO4);
+        if(state==3)return I18n.t(Msg.CEILING_STATUS_CHECK_OUTPUT);
+        if(state==4)return I18n.t(Msg.CEILING_STATUS_NO_COLORS);
+        if(!foreground)return I18n.t(Msg.CEILING_STATUS_BACKGROUND);
+        return state==2?I18n.t(Msg.CEILING_STATUS_LINKED):I18n.t(Msg.CEILING_STATUS_WAITING_SIGNAL);
     }
     String diagnostic(){return summary()+" / HID sent: "+sent;}
     private void poll(){
@@ -43,6 +48,8 @@ final class CeilingOutput {
             int[] frame=nativeLoaded?NativeBridge.ledSnapshot():null;
             unavailable=frame!=null&&frame.length==15&&frame[14]<0;
             if(frame!=null&&frame.length==15&&(frame[2]&(1<<11))!=0){rgb=frame[14];seen=true;}
+            SetupLights lights=setup;int guide=lights==null?-1:lights.ceiling(now);
+            if(guide>=0){rgb=guide;seen=true;}
             if(testColor>=0&&now<testUntil){rgb=testColor;seen=true;}else testColor=-1;
             rgb=LedFrames.scale(rgb,brightness);
         }

@@ -34,7 +34,10 @@ internal object NativeDashboard {
     @JvmStatic fun update(state: WidgetState, frame: JSONObject, stale: Boolean, cover: Bitmap?, host: DashboardHost, type: String) {
         state.frame = frame; state.stale = stale
         if (state.coverSource !== cover) { state.coverSource = cover; state.cover = cover?.asImageBitmap() }
-        if (type == "connection") { state.input = host.connectionDescription(); state.led = host.ledDescription(); state.output = host.displayDescription() }
+        if (type == "connection") {
+            state.input = host.connectionDescription(); state.led = host.ledDescription(); state.output = host.displayDescription()
+            state.inputTone = host.inputTone(); state.ledTone = host.ledTone(); state.outputTone = host.displayTone()
+        }
         if (type == "sensors") { val d = host.diagnostic(); state.sensors = "T ${java.lang.Long.bitCount(d[1])}/34   B ${Integer.bitCount(d[0].toInt() and 255)}/8   P1 ${if (d[0] and 256L != 0L) "ON" else "OFF"}" }
         if (type == "clock") { state.minute = System.currentTimeMillis() / 60000; state.is24Hour = android.text.format.DateFormat.is24HourFormat(host.activity()) }
     }

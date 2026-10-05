@@ -1,2 +1,0 @@
-package io.oniimai.kanade;
-final class UiText {static String t(String value){return value;}}

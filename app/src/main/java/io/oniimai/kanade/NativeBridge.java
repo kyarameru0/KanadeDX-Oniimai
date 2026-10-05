@@ -3,6 +3,10 @@ final class NativeBridge {
     static native int initialize();
     static native void submit(long touch,int buttons,int player,boolean active);
     static native long[] stats();
+    /** [phase, monotonic update count]; no Unity object access on the JNI thread. */
+    static native long[] displayFrames();
+    /** Queues the real startup-button callback on Unity's main thread, only while it is ready. */
+    static native boolean requestStartup();
     /** Copied game statistics as JSON; missing values are omitted. No game calls on this thread. */
     static native String gameplayStats();
     static native int[] ledSnapshot();

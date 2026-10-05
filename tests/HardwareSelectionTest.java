@@ -25,6 +25,14 @@ public final class HardwareSelectionTest {
         check(PortSelection.unique(new String[]{"1:2:4:serialB","1:2:4:serialA"},"1:2:4:serialA")==1,"serial selects original device");
         check(PortSelection.unique(new String[]{"1:2:8:serialA"},"1:2:4:serialA")==-1,"command interface cannot replace saved touch");
         check(PortSelection.unique(new String[]{"1:2:4:serialB"},"1:2:4:serialA")==-1,"other serial is not substituted");
+        String[] ids={"1:2:0:A","1:2:2:A","1:2:4:A","1:2:6:A","1:2:8:A","1:2:9:A"};
+        check(PortSelection.resolve(true,"",ids,names,hid,PortSelection.LED)==PortSelection.DISABLED,"saved empty identity is an explicit not-used, never auto-picked");
+        check(PortSelection.resolve(false,"",ids,names,hid,PortSelection.LED)==2,"no saved identity resolves by name");
+        check(PortSelection.resolve(true,"1:2:4:A",ids,names,hid,PortSelection.LED)==2,"saved identity resolves to its device");
+        check(PortSelection.resolve(true,"1:2:4:B",ids,names,hid,PortSelection.LED)==PortSelection.MISSING,"absent saved device is waiting, not not-used");
+        check(PortSelection.resolve(true,"1:2:4:",new String[]{"1:2:4:A","1:2:4:B"},new String[]{"x","y"},new boolean[]{false,false},PortSelection.LED)==PortSelection.DUPLICATE,"ambiguous saved device reported as duplicate");
+        check(PortSelection.resolve(false,"",new String[]{"a","b"},new String[]{names[2],names[2]},new boolean[]{false,false},PortSelection.LED)==PortSelection.DUPLICATE,"ambiguous names reported as duplicate");
+        check(PortSelection.resolve(false,"",new String[0],new String[0],new boolean[0],PortSelection.LED)==PortSelection.MISSING,"no device at all is missing");
         Map<String,Object> defaults=SetupDefaults.missing(Collections.emptyMap());
         check(Boolean.FALSE.equals(defaults.get("setup_complete")),"fresh install starts wizard");
         check(Boolean.FALSE.equals(defaults.get("touch_command")),"default9600 touch protocol");
@@ -46,7 +54,21 @@ public final class HardwareSelectionTest {
         }
         word(report,0,idle|2);check(Io4Input.mask(report,0)==256&&Io4Input.mask(report,1)==256,"P1 active-high independent of ring bank");
         word(report,1,idle&~4);check(Io4Input.mask(report,1)==257,"P1 and ring simultaneous");
-        word(report,0,idle|(1<<9)|(1<<6));word(report,1,idle);check(Io4Input.mask(report,0)==0,"test/service not silently mapped to P1");
+        word(report,0,idle|(1<<9)|(1<<6));word(report,1,idle);
+        check(Io4Input.mask(report,0)==1536,"TEST and SERVICE have separate transport bits, not P1");
+        check(Io4Input.mask(report,1)==1536,"cabinet keys always come from bank 0");
+        for(int bank=0;bank<2;bank++){
+            word(report,0,idle|(1<<9));check(Io4Input.mask(report,bank)==512,"TEST active high on either player");
+            word(report,0,idle|(1<<6));check(Io4Input.mask(report,bank)==1024,"SERVICE active high on either player");
+            word(report,0,idle);check(Io4Input.mask(report,bank)==0,"release clears cabinet keys");
+        }
+        word(report,0,idle);word(report,1,idle|(1<<9)|(1<<6));
+        check(Io4Input.mask(report,0)==0&&Io4Input.mask(report,1)==0,"reserved bank 1 bits are not cabinet switches");
+        word(report,0,(idle&~4)|2|(1<<9)|(1<<6));word(report,1,idle&~8);
+        check(Io4Input.mask(report,0)==1793,"ring P1 TEST SERVICE coexist");
+        check(Io4Input.mask(report,1)==1794,"player 2 ring coexists with bank 0 cabinet keys");
+        word(report,0,idle);word(report,1,idle);report[25]=(byte)0xff;report[26]=(byte)0xff;
+        check(Io4Input.mask(report,0)==0,"coin counter is not guessed as a TEST/START button");
         invalid(()->Io4Input.mask(new byte[63],0),"short IO4 rejected");invalid(()->Io4Input.mask(report,2),"unknown player rejected");
         report[0]=2;invalid(()->Io4Input.mask(report,0),"wrong report ID rejected");
         System.out.println("PASS: "+checks+" hardware identity/default/IO4 checks");

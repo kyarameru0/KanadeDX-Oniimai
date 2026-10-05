@@ -8,15 +8,15 @@
   </picture>
   <h1>KanadeDX Oniimai</h1>
   <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX on Android.</p>
-  <p><strong>1.2.1</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
+  <p><strong>1.3.25</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
   <p><a href="#quick-start">Install</a> · <a href="docs/USER_GUIDE.md">Use</a> · <a href="docs/DEVELOPER_GUIDE.md">Understand the code</a> · <a href="docs/BUILD.md">Build</a> · <a href="docs/README.md">All documentation</a></p>
 </div>
 
-**The current [1.2.1 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.1) supports KanadeDX-260721.1649 (1.65) and KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [validation and update notes](docs/COMPATIBILITY-1.65.md). The historical **1.0.0 APK supports 1.60 only**.
+**The current [1.3.25 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.3.25) supports KanadeDX-260721.1649 (1.65) and KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [validation and update notes](docs/COMPATIBILITY-1.65.md). The historical **1.0.0 APK supports 1.60 only**.
 
-**New code, tests and documentation were generated and modified with OpenAI Codex.** Requirements and device feedback came from the maintainer. Third-party code retains its own authorship and licenses. [AI disclosure](AI_DISCLOSURE.md)
+**This project contains AI-generated and AI-assisted code, tests and documentation.** OpenAI Codex was used for development, review and release preparation; the maintainer also supplied revised source and device feedback. Third-party code retains its own authorship and licenses. [AI disclosure](AI_DISCLOSURE.md)
 
-> **v1.2.1 · Standalone LSPosed module.** Updated Miuix settings and compact dashboard widgets. [UI previews](docs/UI-PREVIEWS.md). [Release notes](docs/RELEASE-1.2.1.md). The release contains the module APK, module source and dependency sources. The game, songs, artwork, controller firmware and integrated game APKs are not included.
+> **v1.3.25 · Standalone LSPosed module.** Guided controller setup, display-startup safeguards, cabinet welcome screen and responsive dashboard actions. [UI previews](docs/UI-PREVIEWS.md). [Release notes](docs/RELEASE-1.3.25.md). The release contains the module APK, module source and dependency sources. The game, songs, artwork, controller firmware and integrated game APKs are not included.
 
 <details>
 <summary>Contents</summary>
@@ -40,7 +40,7 @@
 | Cards | Controller Aime reader and **phone NFC directly inside the game**, with read failures routed into the game flow |
 | External display | A portrait game rotated 90°/270° on a landscape monitor, with phone/external switching |
 | Phone dashboard | Configurable song, score, judgment, sensor and device widgets; results retained until leaving the result screen |
-| Settings | Kotlin · Jetpack Compose · Miuix UI, guided setup, grouped controls, Korean and Simplified Chinese app languages |
+| Settings | Kotlin · Jetpack Compose · Miuix UI, guided setup, grouped controls, English, Korean and Simplified Chinese app languages |
 
 Output refresh rate depends on the modes exposed by the phone, adapter, cable and monitor. Consistent frame delivery is not guaranteed on every setup. Phone MIFARE Classic reading requires compatible NFC hardware.
 
@@ -51,11 +51,11 @@ Output refresh rate depends on the modes exposed by the phone, adapter, cable an
 
 You need an Android 9+ ARM64 device, an LSPosed environment supporting **modern API 102 and native hooks**, your copy of the supported game, and an Oniimai controller with USB OTG.
 
-1. Install `Oniimai-Kanade-API102-1.2.1.apk` from [Releases](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.2.1).
+1. Install `Oniimai-Kanade-API102-1.3.25.apk` from [Releases](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.3.25).
 2. Enable the module in LSPosed and select **KanadeDX (`app.KanadeDX`)** as its scope.
 3. Fully stop and restart the game process.
-4. Choose a language and monitor orientation in first-run setup. Grant the controller USB permission. Touch and command ports have different roles.
-5. Check **Oniimai settings → Connection** inside the game. For phone NFC, enable system NFC and present a card at the game's start/card-wait screen.
+4. Follow first-run setup: choose a language, connect the controller and grant USB permission when asked, pick the built-in screen orientation, then check buttons, touch and lighting. Touch and command ports have different roles.
+5. Check **Oniimai settings → Devices** (the first tab) inside the game. For phone NFC, enable system NFC and present a card at the game's start/card-wait screen.
 
 A local build uses your own signing key, so it may not install over the maintainer's APK. Back up settings before uninstalling an existing build. [Usage and troubleshooting](docs/USER_GUIDE.md)
 
@@ -101,7 +101,7 @@ Most implementation code lives in `app/src/main/java/io/oniimai/kanade/` and `ap
 <a id="validation"></a>
 ## Validation
 
-For the 1.2.1 build checks and revised UI testing limits, see [release validation](docs/RELEASE-1.2.1.md#validation-and-known-limits). The revised UI has not received a fresh physical-device layout or gesture check.
+For the 1.3.25 build checks and revised UI testing limits, see [release validation](docs/RELEASE-1.3.25.md#validation-and-known-limits). Host and desktop Compose checks passed; this release has not received a fresh physical-device startup, rotation or gesture check.
 
 On a rooted Xiaomi Android 16 phone, rc5 delivered phone-NFC results inside a patched 1.60 host, and the tester confirmed recognition. Separate 1.65 hook/input/card observations and the remaining hardware limits are recorded in [current validation](docs/COMPATIBILITY-1.65.md#verification). Independent non-root-device validation and long-duration USB stability are not established. [Historical 1.0.0 validation](docs/VALIDATION.md)
 

@@ -10,6 +10,7 @@ public class LedOutputTest {
     static void check(boolean b,String label){checks++;if(!b)throw new AssertionError(label);}
     static void await(BooleanSupplier condition,String label)throws Exception{long end=System.currentTimeMillis()+3000;while(!condition.getAsBoolean()&&System.currentTimeMillis()<end)Thread.sleep(5);check(condition.getAsBoolean(),label);}
     public static void main(String[] args)throws Exception{
+        I18n.language("ko"); // status assertions below use the Korean catalogue
         List<byte[]> packets=Collections.synchronizedList(new ArrayList<>());AtomicReference<UsbIo.Cdc> handle=new AtomicReference<>();AtomicBoolean silent=new AtomicBoolean();AtomicInteger opens=new AtomicInteger();
         UsbIo.Cdc.opened=port->{opens.incrementAndGet();handle.set(port);port.onWrite=encoded->{
             byte[] p=LedTest.decode(encoded);packets.add(p);

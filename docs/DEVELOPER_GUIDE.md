@@ -27,6 +27,7 @@ You do not need a game APK or controller to understand the code or run host test
 | `app/src/main/cpp/` | JNI implementation, native state and version-specific game adapters. |
 | `tests/` | Runnable host checks; `fakes/` supplies only the Android behavior those checks need. |
 | `scripts/` | Build, test, locale, target and release-audit commands. |
+| `locales/` | English, Korean and Simplified Chinese UI text by message key; see [Translations](I18N.md). |
 | `target-build.json`, `targets/` | Identity and checked locations for each supported game build. |
 | `docs/` | User guide, this walkthrough and protocol references. |
 
@@ -115,7 +116,7 @@ flowchart LR
 
 The command port and streaming touch port are different roles. Making the first serial port the default caused earlier setup problems; changes to discovery must preserve that distinction.
 
-Touch uses 34 bits. Ring buttons use bits 0–7, and P1 uses bit 8. In [Io4Input.java](../app/src/main/java/io/oniimai/kanade/Io4Input.java), the report's P1 flag becomes `256`, so it remains independent of the eight ring buttons.
+Touch uses 34 bits. Ring buttons use bits 0–7, P1 uses bit 8, TEST uses bit 9 and SERVICE uses bit 10. In [Io4Input.java](../app/src/main/java/io/oniimai/kanade/Io4Input.java), the report's P1 flag becomes `256`, so it remains independent of the eight ring buttons. Cabinet keys always come from IO4 bank 0; [Cabinet keys](CABINET_KEYS.md) describes the game mapping and tests. `BootInputState` intentionally keeps only bits 0–8 for launch-button detection.
 
 The following excerpt from [input_state.h](../app/src/main/cpp/input_state.h) keeps a short press even if it is released before the next game frame:
 
@@ -233,9 +234,9 @@ Current size choices are:
 
 Keep `sizes()`, `validSize()` and the picker in agreement. The parser also retires the old progress/density widget while keeping the remaining saved board. Reusing its old `graph` identifier for a new widget would collide with that migration.
 
-For settings, `GameSession.nativeSettings()` supplies groups/actions, `NativeSettings` models them, and `NativeUi` owns the dialogs and preferences, and `SettingsScreen` in `OniScreens` renders them. Use `Group.status(text, tone)` for live status and `Group.note(text)` for explanations. Store durable choices through the existing preferences and rebuild only the required views. Use shared spacing, typography, colors and transitions; do not create a separate theme per page. Korean/Chinese strings go through the existing locale mechanism and `check_locales.py`.
+For settings, `GameSession.nativeSettings()` supplies groups/actions, `NativeSettings` models them, and `NativeUi` owns the dialogs and preferences, and `SettingsScreen` in `OniScreens` renders them. Use `Group.status(text, tone)` for live status and `Group.note(text)` for explanations. Store durable choices through the existing preferences and rebuild only the required views. Use shared spacing, typography, colors and transitions; do not create a separate theme per page. User-visible text is a keyed message: add it to `locales/*.json`, regenerate, and call `I18n.t(Msg.KEY, args…)` (Kotlin: `str(Msg.KEY)`). Never join translated fragments; see [Translations](I18N.md).
 
-For a small first UI change, inspect `OniTokens` in `OniTheme.kt`: `inset` is the shared outer padding, `gap` is the common gap, and `caption` is the small-text size. Follow their usages before editing a value, since changing a shared token affects several screens. To fix one clipped label, first check that label's bounds and wrapping rather than shrinking every font. Verify both app languages and a larger Android font scale on-device.
+For a small first UI change, inspect `OniTokens` in `OniTheme.kt`: `inset` is the shared outer padding, `gap` is the common gap, and `caption` is the small-text size. Follow their usages before editing a value, since changing a shared token affects several screens. To fix one clipped label, first check that label's bounds and wrapping rather than shrinking every font. Verify all three app languages (English is usually the longest) and a larger Android font scale on-device.
 
 ## 7. Keeping license text visible and current
 
@@ -257,7 +258,7 @@ When adding a dependency, update notices and the inventory first, then the viewe
 | Sensor picture is wrong | `SensorBoard`; keep input parsing separate | Label/shape comparison and live diagnostics |
 | Statistics vanish in Result | `GameplayStats`, `StatsLifecycle` | Game → loading → Result → exit, plus abort/retry |
 | External output stutters or has wrong rotation | `DisplayOutput`, `DisplayGeometry` | Actual active display mode, direct/fallback route and frame timings |
-| UI spacing or text clipping | `OniTheme`, `OniScreens`, widget bounds | Small screen, 2×2 tiles, font scale and both languages |
+| UI spacing or text clipping | `OniTheme`, `OniScreens`, widget bounds | Small screen, 2×2 tiles, font scale and all three languages |
 | New game version | Target JSON manifests, `target_build.h`, per-build headers, affected native adapters | Verify exact method signatures, field layouts and interior guards, then both old/new APKs and feature-by-feature device checks |
 
 ## Match the change to an existing test
@@ -272,7 +273,7 @@ The host runner is `scripts/test.py`. It compiles the Java checks, then runs the
 | Display geometry | [DisplayGeometryTest](../tests/DisplayGeometryTest.java) |
 | USB card parsing and reconnection | [AimeProtocolTest](../tests/AimeProtocolTest.java), [AimeChannelTest](../tests/AimeChannelTest.java), [AimeReaderTest](../tests/AimeReaderTest.java) |
 | Phone NFC format and stale replies | [PhoneNfcTest](../tests/PhoneNfcTest.java) |
-| Button/reader/speaker lighting | [LedOutputTest](../tests/LedOutputTest.java), [CeilingOutputTest](../tests/CeilingOutputTest.java), [AimeChannelTest](../tests/AimeChannelTest.java) |
+| Button/reader/speaker lighting | [LedOutputTest](../tests/LedOutputTest.java), [LobbyLightsTest](../tests/LobbyLightsTest.java), [CeilingOutputTest](../tests/CeilingOutputTest.java), [AimeChannelTest](../tests/AimeChannelTest.java) |
 | Native input, statistics and card state | [native_state_test.cpp](../tests/native_state_test.cpp), run through the host runner with `--ndk` |
 | USB ownership and cancellation | The separate `scripts/test_usb_transport.py` runner |
 

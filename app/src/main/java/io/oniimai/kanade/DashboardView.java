@@ -59,7 +59,9 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
                 super.onMeasure(ws,hs);
             }
         };scroll.setFillViewport(true);scroll.setClipToPadding(true);
-        scroll.setPadding(dp(16),dp(6),dp(16),dp(22));scroll.setVerticalScrollBarEnabled(true);
+        // No space below the widgets: the action bar's own even padding is the gap, so its buttons sit midway
+        // between the widgets and the bottom edge, one card gap from each.
+        scroll.setPadding(dp(16),dp(6),dp(16),0);scroll.setVerticalScrollBarEnabled(true);
         scroll.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
         scroll.setVerticalFadingEdgeEnabled(false);
         board=new Board();scroll.addView(board,new ScrollView.LayoutParams(-1,-2));
@@ -70,33 +72,33 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
     }
     private int dp(float n){return GameUi.dp(getContext(),n);}
     static String title(String type){switch(type){
-        case "song":return GameUi.tr("곡 정보","歌曲信息");
-        case "score":return GameUi.tr("점수 · 콤보","成绩 · 连击");
-        case "judgments":return GameUi.tr("판정 통계","判定统计");
+        case "song":return I18n.t(Msg.WIDGET_SONG_TITLE);
+        case "score":return I18n.t(Msg.WIDGET_SCORE_TITLE);
+        case "judgments":return I18n.t(Msg.WIDGET_JUDGMENTS_TITLE);
         case "timing":return "FAST / LATE";
-        case "sensors":return GameUi.tr("터치 · 버튼","触摸 · 按钮");
-        case "connection":return GameUi.tr("장치 상태","设备状态");
-        default:return GameUi.tr("시계","时钟");
+        case "sensors":return I18n.t(Msg.WIDGET_SENSORS_TITLE);
+        case "connection":return I18n.t(Msg.WIDGET_CONNECTION_TITLE);
+        default:return I18n.t(Msg.WIDGET_CLOCK_TITLE);
     }}
     private static String description(String type){switch(type){
-        case "song":return GameUi.tr("재킷, 곡명, 아티스트와 난이도","封面、曲名、艺术家和难度");
-        case "score":return GameUi.tr("달성률, 콤보와 DX 점수","达成率、连击和DX 分数");
-        case "judgments":return GameUi.tr("Critical부터 Miss까지 실시간 판정","实时显示 Critical 至 Miss 判定");
-        case "timing":return GameUi.tr("빠른 판정과 늦은 판정 비교","比较偏快和偏慢的判定");
-        case "sensors":return GameUi.tr("실제 34개 터치 영역과 버튼 입력","34 个真实触摸区和按钮状态");
-        case "connection":return GameUi.tr("USB 입력, LED와 외부 화면 상태","USB 输入、LED 和外接屏幕状态");
-        default:return GameUi.tr("현재 시간과 날짜","当前时间和日期");
+        case "song":return I18n.t(Msg.WIDGET_SONG_DESCRIPTION);
+        case "score":return I18n.t(Msg.WIDGET_SCORE_DESCRIPTION);
+        case "judgments":return I18n.t(Msg.WIDGET_JUDGMENTS_DESCRIPTION);
+        case "timing":return I18n.t(Msg.WIDGET_TIMING_DESCRIPTION);
+        case "sensors":return I18n.t(Msg.WIDGET_SENSORS_DESCRIPTION);
+        case "connection":return I18n.t(Msg.WIDGET_CONNECTION_DESCRIPTION);
+        default:return I18n.t(Msg.WIDGET_CLOCK_DESCRIPTION);
     }}
     private void chrome(){
         header.removeAllViews();toolbar.removeAllViews();
         hint.setVisibility(View.GONE);
         header.addView(NativeDashboard.header(host.activity(),editing,preview,host.demo(),()->{if(editing)save();else edit(-1);}),new LinearLayout.LayoutParams(-1,-2));
-        String[] labels=editing?new String[]{GameUi.tr("추가","添加"),GameUi.tr("배치","布局"),GameUi.tr("취소","取消")}:preview?new String[]{GameUi.tr("돌아가기","返回")}:new String[]{GameUi.tr("폰으로 전환","切换到手机"),GameUi.tr("설정","设置")};
+        String[] labels=editing?new String[]{I18n.t(Msg.DASHBOARD_ADD),I18n.t(Msg.DASHBOARD_ARRANGE),I18n.t(Msg.COMMON_CANCEL)}:preview?new String[]{I18n.t(Msg.COMMON_GO_BACK)}:new String[]{I18n.t(Msg.DASHBOARD_SWITCH_TO_PHONE),I18n.t(Msg.COMMON_SETTINGS)};
         Runnable[] actions=editing?new Runnable[]{this::catalog,this::arrange,this::confirmExit}:preview?new Runnable[]{close}:new Runnable[]{close,host::showSettings};
         toolbar.addView(NativeDashboard.footer(host.activity(),labels,actions,false),new LinearLayout.LayoutParams(-1,-2));
     }
     private void edit(int id){if(!editing){layout=layout.copy();editing=true;host.setDashboardEditing(true);}selected=id;chrome();board.rebuild();}
-    private void save(){host.prefs().edit().putString(KEY,layout.encode()).apply();finish();toast(GameUi.tr("위젯 배치를 저장했습니다","已保存小组件布局"));}
+    private void save(){host.prefs().edit().putString(KEY,layout.encode()).apply();finish();toast(I18n.t(Msg.DASHBOARD_SAVED));}
     private void finish(){editing=false;host.setDashboardEditing(false);host.prefs().edit().remove(DRAFT_KEY).apply();selected=-1;layout=loadLayout(KEY);chrome();board.rebuild();}
     boolean back(){
         if(!editing)return false;
@@ -105,7 +107,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
     /** Unchanged drafts close silently; otherwise ask, so one stray tap on Cancel cannot discard work. */
     private void confirmExit(){
         if(!dirty()){finish();return;}
-        host.choose(GameUi.tr("편집을 마칠까요?","结束编辑？"),new String[]{GameUi.tr("저장하고 마치기","保存并结束"),GameUi.tr("변경 취소","放弃更改"),GameUi.tr("계속 편집","继续编辑")},-1,i->{if(i==0)save();else if(i==1)finish();});
+        host.choose(I18n.t(Msg.DASHBOARD_EXIT_TITLE),new String[]{I18n.t(Msg.DASHBOARD_EXIT_SAVE),I18n.t(Msg.DASHBOARD_EXIT_DISCARD),I18n.t(Msg.DASHBOARD_EXIT_CONTINUE)},-1,i->{if(i==0)save();else if(i==1)finish();});
     }
     private boolean dirty(){return !layout.encode().equals(DashboardLayout.parse(host.prefs().getString(KEY,"")).encode());}
     private void catalog(){
@@ -114,14 +116,14 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
             StringBuilder dimensions=new StringBuilder();for(int[] size:DashboardLayout.sizes(TYPES[i])){if(dimensions.length()>0)dimensions.append("  ·  ");dimensions.append(size[0]).append("×").append(size[1]);}
             options[i]=title(TYPES[i])+"  ·  "+dimensions+"\n"+description(TYPES[i]);
         }
-        host.choose(GameUi.tr("위젯 추가","添加小组件"),options,-1,i->{
+        host.choose(I18n.t(Msg.DASHBOARD_ADD_WIDGET),options,-1,i->{
             DashboardLayout.Item item=layout.add(TYPES[i]);
-            if(item==null){toast(GameUi.tr("위젯은 최대 20개까지 배치할 수 있습니다","最多可放置 20 个小组件"));return;}
+            if(item==null){toast(I18n.t(Msg.DASHBOARD_LIMIT));return;}
             selected=item.id;board.rebuild();board.post(()->scroll.smoothScrollTo(0,board.rowTop(item.y)));
         });
     }
     private void arrange(){
-        host.choose(GameUi.tr("배치 도구","布局工具"),new String[]{GameUi.tr("전체 2×2 배치","全部设为 2×2"),GameUi.tr("빈 공간 정리","整理空白"),GameUi.tr("기본 배치","默认布局"),GameUi.tr("플레이 집중 배치","游玩专注布局"),GameUi.tr("입력 테스트 배치","输入测试布局"),GameUi.tr("모든 위젯 비우기","清空所有小组件")},-1,i->{
+        host.choose(I18n.t(Msg.DASHBOARD_ARRANGE_TITLE),new String[]{I18n.t(Msg.DASHBOARD_ARRANGE_ALL_2X2),I18n.t(Msg.DASHBOARD_ARRANGE_PACK),I18n.t(Msg.DASHBOARD_ARRANGE_DEFAULT),I18n.t(Msg.DASHBOARD_ARRANGE_PLAY),I18n.t(Msg.DASHBOARD_ARRANGE_INPUT_TEST),I18n.t(Msg.DASHBOARD_ARRANGE_CLEAR)},-1,i->{
             if(i==0)layout.compact();
             else if(i==1)layout.pack();
             else if(i==2)layout=DashboardLayout.defaults();
@@ -135,10 +137,10 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
     }
     private void options(int id){
         DashboardLayout.Item item=layout.get(id);if(item==null)return;select(id);
-        host.choose(title(item.type),new String[]{GameUi.tr("크기 변경","调整大小")+"  ·  "+item.w+" × "+item.h,GameUi.tr("앞으로 이동","向前移动"),GameUi.tr("뒤로 이동","向后移动"),GameUi.tr("하나 더 추가","再添加一个"),GameUi.tr("위젯 삭제","删除小组件")},-1,i->{
+        host.choose(title(item.type),new String[]{I18n.t(Msg.DASHBOARD_WIDGET_RESIZE)+"  ·  "+item.w+" × "+item.h,I18n.t(Msg.DASHBOARD_WIDGET_MOVE_EARLIER),I18n.t(Msg.DASHBOARD_WIDGET_MOVE_LATER),I18n.t(Msg.DASHBOARD_WIDGET_DUPLICATE),I18n.t(Msg.DASHBOARD_WIDGET_DELETE)},-1,i->{
             if(i==0){sizes(id);return;}
-            if(i==1||i==2){if(!layout.moveBy(id,i==1?-1:1))toast(GameUi.tr("더 이동할 수 없습니다","无法继续移动"));}
-            else if(i==3){DashboardLayout.Item added=layout.add(item.type);if(added!=null)selected=added.id;else toast(GameUi.tr("위젯 개수 또는 공간이 부족합니다","小组件数量已达上限或空间不足"));}
+            if(i==1||i==2){if(!layout.moveBy(id,i==1?-1:1))toast(I18n.t(Msg.DASHBOARD_WIDGET_CANNOT_MOVE));}
+            else if(i==3){DashboardLayout.Item added=layout.add(item.type);if(added!=null)selected=added.id;else toast(I18n.t(Msg.DASHBOARD_WIDGET_NO_ROOM));}
             else layout.remove(id);
             board.rebuild();
         });
@@ -146,9 +148,9 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
     private void sizes(int id){
         DashboardLayout.Item item=layout.get(id);if(item==null)return;
         int[][] sizes=DashboardLayout.sizes(item.type);String[] names=new String[sizes.length];int checked=-1;
-        for(int n=0;n<sizes.length;n++){int[] s=sizes[n];names[n]=s[0]+" × "+s[1]+"  ·  "+(s[0]!=s[1]?GameUi.tr("가로형","横向"):s[0]==4?GameUi.tr("큰 정사각형","大方形"):GameUi.tr("정사각형","方形"));if(item.w==s[0]&&item.h==s[1])checked=n;}
-        host.choose(GameUi.tr("위젯 크기","小组件大小"),names,checked,i->{
-            int[] size=sizes[i];if(!resizeAndPack(id,size[0],size[1]))toast(GameUi.tr("공간이 부족합니다. 다른 위젯을 이동해 주세요","空间不足，请移动其他小组件"));board.rebuild();
+        for(int n=0;n<sizes.length;n++){int[] s=sizes[n];names[n]=s[0]+" × "+s[1]+"  ·  "+(s[0]!=s[1]?I18n.t(Msg.DASHBOARD_SIZE_WIDE):s[0]==4?I18n.t(Msg.DASHBOARD_SIZE_LARGE_SQUARE):I18n.t(Msg.DASHBOARD_SIZE_SQUARE));if(item.w==s[0]&&item.h==s[1])checked=n;}
+        host.choose(I18n.t(Msg.DASHBOARD_SIZE_TITLE),names,checked,i->{
+            int[] size=sizes[i];if(!resizeAndPack(id,size[0],size[1]))toast(I18n.t(Msg.DASHBOARD_SIZE_NO_ROOM));board.rebuild();
         });
     }
     private boolean resizeAndPack(int id,int w,int h){
@@ -216,7 +218,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
             super.onDraw(canvas);
             boolean night=GameUi.night(getContext());
             if(editing){paint.setColor(GameUi.line(night));for(float y=cellHeight/2;y<getHeight();y+=cellHeight+gap)for(float x=gridLeft+cellWidth/2;x<getWidth()-gridLeft;x+=cellWidth+gap)canvas.drawCircle(x,y,dp(2),paint);}
-            if(getChildCount()==0){paint.setColor(GameUi.muted(night));paint.setTypeface(GameAssets.font(getContext()));paint.setTextSize(dp(16));paint.setTextAlign(Paint.Align.CENTER);String text=GameUi.tr("위젯을 추가해 나만의 화면을 만드세요","添加小组件，打造专属界面");float width=paint.measureText(text);if(width>getWidth()-dp(16))paint.setTextSize(paint.getTextSize()*(getWidth()-dp(16))/width);canvas.drawText(text,getWidth()/2f,dp(95),paint);}
+            if(getChildCount()==0){paint.setColor(GameUi.muted(night));paint.setTypeface(GameAssets.font(getContext()));paint.setTextSize(dp(16));paint.setTextAlign(Paint.Align.CENTER);String text=I18n.t(Msg.DASHBOARD_EMPTY);float width=paint.measureText(text);if(width>getWidth()-dp(16))paint.setTextSize(paint.getTextSize()*(getWidth()-dp(16))/width);canvas.drawText(text,getWidth()/2f,dp(95),paint);}
         }
         @Override protected void dispatchDraw(Canvas canvas){
             super.dispatchDraw(canvas);if(!ghost)return;
@@ -259,7 +261,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
             setOnLongClickListener(v->{edit(id);performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);return true;});
             setOnClickListener(v->{if(editing)options(id);});
             setAccessibilityDelegate(new View.AccessibilityDelegate(){
-                @Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK,GameUi.tr("위젯 편집","编辑小组件")));}
+                @Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK,I18n.t(Msg.DASHBOARD_EDIT_TITLE)));}
             });
         }
         @Override public boolean onInterceptTouchEvent(android.view.MotionEvent event){return true;}
@@ -278,7 +280,7 @@ final class DashboardView extends LinearLayout implements SharedPreferences.OnSh
                     return true;
                 case MotionEvent.ACTION_UP:
                     removeCallbacks(edgeScroll);getParent().requestDisallowInterceptTouchEvent(false);
-                    if(dragging){boolean done=board.valid&&(resizing?layout.resizeAndPack(id,board.ghostW,board.ghostH):layout.move(id,board.ghostX,board.ghostY));if(!done)toast(GameUi.tr("빈칸에 놓거나 위젯 옵션에서 크기·순서를 바꿔 주세요","请放到空白处，或在选项中调整大小和顺序"));board.rebuild();}
+                    if(dragging){boolean done=board.valid&&(resizing?layout.resizeAndPack(id,board.ghostW,board.ghostH):layout.move(id,board.ghostX,board.ghostY));if(!done)toast(I18n.t(Msg.DASHBOARD_DROP_HINT));board.rebuild();}
                     else performClick();return true;
                 case MotionEvent.ACTION_CANCEL:
                     removeCallbacks(edgeScroll);dragging=false;resizing=false;getParent().requestDisallowInterceptTouchEvent(false);setAlpha(1);setScaleX(1);setScaleY(1);setElevation(dp(1));setTranslationX(0);setTranslationY(0);board.ghost=false;board.invalidate();return true;

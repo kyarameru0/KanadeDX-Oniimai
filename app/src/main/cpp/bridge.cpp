@@ -10,6 +10,7 @@
 #include "input_state.h"
 #include "led_state.h"
 #include "target_build.h"
+#include "display_frame_state.h"
 
 // Assigned under installLock before publishing hooks; never switched afterward.
 static const TargetBuild* targetBuild=nullptr;
@@ -24,6 +25,7 @@ static std::atomic<int> status{-1};
 static std::atomic<uint64_t> frames{0},touchReads{0};
 static pthread_mutex_t stateLock=PTHREAD_MUTEX_INITIALIZER, installLock=PTHREAD_MUTEX_INITIALIZER;
 static InputState state;
+static DisplayFrameState displayFrames;
 static LedState leds;
 static pthread_mutex_t ledLock=PTHREAD_MUTEX_INITIALIZER;
 static std::atomic<int> ledStatus{0};
@@ -115,6 +117,7 @@ static void touchHook(void* self,int player,uint64_t real,bool updated,const voi
 static void frameHook(const void* method){
     pthread_mutex_lock(&stateLock);state.frame(nowMs());pthread_mutex_unlock(&stateLock);frames++;
     originalFrame(method);
+    pthread_mutex_lock(&stateLock);displayFrames.game();pthread_mutex_unlock(&stateLock);
 }
 static bool rawHook(void* self,int id,const void* method){
     bool real=originalRaw(self,id,method);
@@ -199,6 +202,20 @@ extern "C" JNIEXPORT void JNICALL Java_io_oniimai_kanade_NativeBridge_submit(JNI
 extern "C" JNIEXPORT jlongArray JNICALL Java_io_oniimai_kanade_NativeBridge_stats(JNIEnv* env,jclass){
     jlong data[]={status.load(),jlong(frames.load()),jlong(touchReads.load())};
     jlongArray result=env->NewLongArray(3);if(result)env->SetLongArrayRegion(result,0,3,data);return result;
+}
+extern "C" JNIEXPORT jlongArray JNICALL Java_io_oniimai_kanade_NativeBridge_displayFrames(JNIEnv* env,jclass){
+    pthread_mutex_lock(&stateLock);
+    // phase, update counter, stages reached after Start, and whether those stages can be seen at all.
+    jlong data[]={jlong(displayFrames.phase),jlong(displayFrames.updates),jlong(displayFrames.stages),
+        jlong(GameUi::hookStatus.load()==7&&BootInput::hookStatus.load()==3?1:0)};
+    pthread_mutex_unlock(&stateLock);
+    jlongArray result=env->NewLongArray(4);if(result)env->SetLongArrayRegion(result,0,4,data);return result;
+}
+extern "C" JNIEXPORT jboolean JNICALL Java_io_oniimai_kanade_NativeBridge_requestStartup(JNIEnv*,jclass){
+    pthread_mutex_lock(&stateLock);
+    bool accepted=status.load()==15&&BootInput::hookStatus.load()==3&&displayFrames.phase==DisplayFrameState::STARTUP
+        &&BootInput::gate.requestManual(nowMs());
+    pthread_mutex_unlock(&stateLock);return accepted;
 }
 extern "C" JNIEXPORT void JNICALL Java_io_oniimai_kanade_NativeBridge_aimeEnabled(JNIEnv*,jclass,jboolean enabled){
     pthread_mutex_lock(&GameAime::lock);GameAime::input.enable(enabled&&GameAime::hookStatus.load()==3);pthread_mutex_unlock(&GameAime::lock);

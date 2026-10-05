@@ -17,19 +17,19 @@ final class LedChannel implements AutoCloseable {
             CompletableFuture<byte[]> p=pending;
             if(p!=null&&source==address&&cmd==expected){
                 if(status==1&&report==1)p.complete(data);
-                else p.completeExceptionally(new IOException(UiText.t("LED 응답 오류 ")+status+" / "+report));
+                else p.completeExceptionally(new IOException(I18n.t(Msg.LED_RESPONSE_ERROR,status,report)));
             }
         });
         port.start(parser::feed,error->{close();});
     }
     synchronized void enableReplies() throws IOException {port.write(Protocol.led(address,0x7d,new byte[0]));}
     synchronized byte[] request(int command,byte[] payload) throws IOException {
-        if(closed)throw new IOException(UiText.t("LED 포트가 닫혔습니다. 다시 연결하세요."));
+        if(closed)throw new IOException(I18n.t(Msg.LED_PORT_CLOSED));
         CompletableFuture<byte[]> p=new CompletableFuture<>();expected=command;pending=p;
         try{
             port.write(Protocol.led(address,command,payload));return p.get(timeout,TimeUnit.MILLISECONDS);
-        }catch(TimeoutException e){close();throw new IOException(UiText.t("LED 응답 없음 — 포트·노드 주소를 확인하세요."));}
-        catch(InterruptedException e){Thread.currentThread().interrupt();close();throw new IOException(UiText.t("LED 요청 취소"),e);}
+        }catch(TimeoutException e){close();throw new IOException(I18n.t(Msg.LED_NO_RESPONSE));}
+        catch(InterruptedException e){Thread.currentThread().interrupt();close();throw new IOException(I18n.t(Msg.LED_REQUEST_CANCELLED),e);}
         catch(ExecutionException e){close();throw new IOException(e.getCause().getMessage(),e.getCause());}
         catch(IOException e){close();throw e;}
         finally{pending=null;expected=-1;}
@@ -38,6 +38,6 @@ final class LedChannel implements AutoCloseable {
     boolean isClosed(){return closed;}
     public void close(){
         if(closed)return;closed=true;
-        CompletableFuture<byte[]> p=pending;if(p!=null)p.completeExceptionally(new IOException(UiText.t("LED 연결 종료")));port.close();
+        CompletableFuture<byte[]> p=pending;if(p!=null)p.completeExceptionally(new IOException(I18n.t(Msg.LED_CLOSED)));port.close();
     }
 }

@@ -42,6 +42,16 @@ final class PortSelection {
         }
         return found;
     }
+    /** Outcomes of {@link #resolve} other than a port index. */
+    static final int MISSING=-1, DUPLICATE=-2, DISABLED=-3;
+    /**
+     * One rule for both connecting and labelling a role. A saved empty identity is an explicit
+     * "not used"; a saved identity only ever matches that device; no saved identity matches by name.
+     */
+    static int resolve(boolean saved,String identity,String[] ids,String[] names,boolean[] hid,int role){
+        if(saved&&identity.isEmpty())return DISABLED;
+        return saved?unique(ids,identity):named(names,hid,role);
+    }
     static int automaticTouch(String[] names,boolean[] hid){return named(names,hid,TOUCH);}
     static int protocol(String name,boolean hid,int fallback){int role=role(name,hid);return role==TOUCH?1:role==COMMAND?0:fallback;}
 }

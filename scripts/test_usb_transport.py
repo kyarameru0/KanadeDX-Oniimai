@@ -17,7 +17,7 @@ for fixture in sorted((root / 'tests/usb-transport').glob('*.fixture')):
     shutil.copyfile(fixture, source)
     sources.append(source)
 production = root / 'app/src/main/java/io/oniimai/kanade'
-sources += [production / (name + '.java') for name in ('UsbIo', 'Protocol', 'PortSelection', 'Io4Output')]
+sources += [production / (name + '.java') for name in ('UsbIo', 'Protocol', 'PortSelection', 'Io4Output', 'I18n', 'I18nCatalog', 'Msg')]
 def jdk(name):
     return str(Path(a.java_home) / 'bin' / (name + '.exe')) if a.java_home else name
 subprocess.run([jdk('javac'), '--release', '8', '-encoding', 'UTF-8', '-d', str(out), *map(str, sources)], check=True)

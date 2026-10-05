@@ -29,15 +29,14 @@ final class PhoneNfcReader implements ServiceConnection,NfcAdapter.ReaderCallbac
         try{adapter=NfcAdapter.getDefaultAdapter(activity);}catch(RuntimeException error){Log.w("OniimaiPhoneNfc","Adapter initialization: "+error.getClass().getSimpleName());}
         Log.i("OniimaiPhoneNfc","Adapter present="+(adapter!=null)+" permission="+direct);
     }
-    private static String tr(String ko,String zh){return GameUi.tr(ko,zh);}
     String summary(){return status;}
     boolean supported(){return adapter!=null;}
     void update(boolean allowed,long now){
         enabled=allowed;
         if(destroyed)return;
-        if(!allowed){pause();if(status.isEmpty())status=adapter==null?tr("폰 NFC를 초기화하지 못했습니다","无法初始化手机 NFC"):tr("게임 카드 대기에서 자동 인식","在游戏等待读卡时自动识别");return;}
+        if(!allowed){pause();if(status.isEmpty())status=adapter==null?I18n.t(Msg.PHONE_NFC_INIT_FAILED):I18n.t(Msg.PHONE_NFC_AUTO);return;}
         if(now<nextCheck)return;nextCheck=now+200;
-        if(adapter==null){status=tr("이 기기는 NFC를 지원하지 않습니다","此设备不支持 NFC");return;}
+        if(adapter==null){status=I18n.t(Msg.PHONE_NFC_UNSUPPORTED);return;}
         if(read.token()!=0&&(read.expired(now)||NativeBridge.aimeGeneration()!=read.generation()||NativeBridge.aimeStatus()!=1)){
             if(read.expired(now)&&NativeBridge.aimeGeneration()==read.generation()&&NativeBridge.aimeStatus()==1)NativeBridge.aimeError(AimeChannel.READ_FAILED,read.generation());
             cancelRead();
@@ -47,24 +46,24 @@ final class PhoneNfcReader implements ServiceConnection,NfcAdapter.ReaderCallbac
             catch(RuntimeException ignored){bound=false;}
             Log.i("OniimaiPhoneNfc","Permission service bind="+bound);
             if(!bound){
-                retryAt=now+5000;status=tr("최신 Oniimai 모듈 APK를 설치해 주세요","请安装最新的 Oniimai 模块 APK");
+                retryAt=now+5000;status=I18n.t(Msg.PHONE_NFC_UPDATE_MODULE);
                 if(!bootstrapped){bootstrapped=true;try{
                     activity.startActivityForResult(new Intent().setClassName("io.oniimai.kanade","io.oniimai.kanade.NfcBridgeAccess$Bootstrap"),0x4f4e);
                 }catch(RuntimeException ignored){}}
                 return;
             }
         }
-        if(!direct&&service==null){status=tr("폰 NFC 연결 중…","正在连接手机 NFC…");return;}
+        if(!direct&&service==null){status=I18n.t(Msg.PHONE_NFC_CONNECTING);return;}
         boolean scanning=NativeBridge.aimeStatus()==1;
         try{
-            if(!adapter.isEnabled()){disableMode();status=tr("시스템 설정에서 폰 NFC를 켜 주세요","请在系统设置中开启手机 NFC");return;}
+            if(!adapter.isEnabled()){disableMode();status=I18n.t(Msg.PHONE_NFC_TURN_ON);return;}
             if(scanning&&!registered){
                 Bundle options=new Bundle();options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY,250);
                 adapter.enableReaderMode(activity,this,NfcAdapter.FLAG_READER_NFC_A|NfcAdapter.FLAG_READER_NFC_F|NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,options);
                 registered=true;Log.i("OniimaiPhoneNfc","In-game NFC ReaderMode enabled; transport="+(direct?"direct":"bound-service"));
             }else if(!scanning)disableMode();
-            status=scanning?tr("폰 뒷면에 카드를 대세요 · 컨트롤러 리더도 사용 가능","请将卡片靠近手机背面 · 也可使用控制器读卡器"):tr("게임 카드 대기에서 자동 인식","在游戏等待读卡时自动识别");
-        }catch(RuntimeException error){disableMode();status=tr("폰 NFC 연결 실패 · 시스템 NFC 설정을 확인하세요","手机 NFC 连接失败 · 请检查系统 NFC 设置");Log.w("OniimaiPhoneNfc","ReaderMode unavailable: "+error.getClass().getSimpleName());}
+            status=scanning?I18n.t(Msg.PHONE_NFC_SCANNING):I18n.t(Msg.PHONE_NFC_AUTO);
+        }catch(RuntimeException error){disableMode();status=I18n.t(Msg.PHONE_NFC_FAILED);Log.w("OniimaiPhoneNfc","ReaderMode unavailable: "+error.getClass().getSimpleName());}
     }
     @Override public void onTagDiscovered(Tag tag){ui.post(()->{
         if(destroyed||!enabled||!registered||(!direct&&service==null)||read.token()!=0||NativeBridge.aimeStatus()!=1)return;

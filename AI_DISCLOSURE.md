@@ -1,6 +1,6 @@
 # AI disclosure
 
-New implementation code, tests and documentation were generated and modified using OpenAI Codex. The user provided requirements, connected hardware and supplied feedback about card recognition, controls and display performance.
+This project contains AI-generated and AI-assisted implementation code, tests and documentation. OpenAI Codex was used for development, review and release preparation. The maintainer supplied requirements, revised source archives, connected hardware and feedback about card recognition, controls and display performance. The 1.3.25 release integrates the maintainer-supplied 1.3.25 source archive; this disclosure does not attribute every supplied revision to one AI tool.
 
 This does not mean every line is newly generated. Ports, adaptations and external dependencies retain their original authorship and licenses; see [Provenance](docs/PROVENANCE.md).
 

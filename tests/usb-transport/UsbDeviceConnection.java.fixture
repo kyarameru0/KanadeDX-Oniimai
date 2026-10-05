@@ -29,7 +29,17 @@ public final class UsbDeviceConnection {
         }
         return length;
     }
-    public int bulkTransfer(UsbEndpoint endpoint,byte[] data,int length,int timeout){return -1;}
+    /** Reads: each call waits readDelayMs then returns readResult; a queued payload is delivered first. */
+    public volatile int readResult=-1;public volatile long readDelayMs;
+    public final AtomicInteger reads=new AtomicInteger();
+    public final LinkedBlockingQueue<byte[]> payloads=new LinkedBlockingQueue<>();
+    public int bulkTransfer(UsbEndpoint endpoint,byte[] data,int length,int timeout){
+        reads.incrementAndGet();
+        byte[] payload=payloads.poll();
+        if(payload!=null){System.arraycopy(payload,0,data,0,payload.length);return payload.length;}
+        if(readDelayMs>0)try{Thread.sleep(readDelayMs);}catch(InterruptedException e){Thread.currentThread().interrupt();}
+        return readResult;
+    }
     public int bulkTransfer(UsbEndpoint endpoint,byte[] data,int offset,int length,int timeout){
         writes.incrementAndGet();blockWrite();
         if(closes.get()!=0)throw new IllegalStateException("write raced closed fd");return length;

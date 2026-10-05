@@ -2,6 +2,8 @@ package io.oniimai.kanade
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -21,8 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -33,6 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.togetherWith
 import org.json.JSONObject
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.extra.SuperArrow
@@ -68,28 +75,30 @@ import java.util.Locale
     }
 }
 
-@Composable internal fun HomeScreen(language: String, onLaunch: () -> Unit, onPreview: () -> Unit, onLanguage: () -> Unit, onLicenses: () -> Unit) {
-    Page(tr("Oniimai", "Oniimai")) {
+@Composable internal fun HomeScreen(language: String, onLaunch: () -> Unit, onPreview: () -> Unit, onLanguage: () -> Unit, onLicenses: () -> Unit,
+                                   onAbout: (() -> Unit)? = null) {
+    Page(str(Msg.HOME_TITLE)) {
         LazyColumn(Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
             item(key = "hero") {
                 // The large page title already says "Oniimai"; the hero describes what the module does.
                 // Launching the game is the reason to open this app, so it is the hero's button rather than a list row.
-                HeroCard(tr("컨트롤러 모듈", "控制器模块"), tr("KanadeDX 전용 · 터치·버튼 입력, RGB 조명, 외부 화면", "KanadeDX 专用 · 触摸与按钮输入、RGB 灯光、外接屏幕"),
-                    listOf("v${BuildConfig.VERSION_NAME}", "LSPosed API 102"), action = tr("KanadeDX 열기", "打开 KanadeDX"), onAction = onLaunch)
+                HeroCard(str(Msg.HOME_HERO_TITLE), str(Msg.HOME_HERO_SUBTITLE),
+                    listOf("v${BuildConfig.VERSION_NAME}", "LSPosed API 102"), action = str(Msg.HOME_LAUNCH), onAction = onLaunch)
             }
             item(key = "main") { Card {
-                SuperArrow(title = tr("대시보드 미리보기", "预览仪表盘"), summary = tr("위젯 배치와 크기를 편집합니다", "编辑小组件的布局与大小"),
+                SuperArrow(title = str(Msg.HOME_PREVIEW), summary = str(Msg.HOME_PREVIEW_SUMMARY),
                     leftAction = { RowIcon(IconTint.purple, MiuixIcons.Useful.Edit) }, onClick = onPreview)
             } }
-            item(key = "app") { SectionTitle(tr("앱 설정", "应用设置")); Card {
-                SuperArrow(title = tr("언어", "语言"), rightText = language, leftAction = { RowIcon(IconTint.green, label = "文") }, onClick = onLanguage)
-                SuperArrow(title = tr("라이선스 · 출처", "许可与来源"), summary = "GPL-3.0 · MPL-2.0",
+            item(key = "app") { SectionTitle(str(Msg.HOME_APP_SETTINGS)); Card {
+                SuperArrow(title = str(Msg.COMMON_LANGUAGE), rightText = language, leftAction = { RowIcon(IconTint.green, label = I18n.LANGUAGE_GLYPH) }, onClick = onLanguage)
+                SuperArrow(title = str(Msg.LICENSE_TITLE), summary = "GPL-3.0 · MPL-2.0",
                     leftAction = { RowIcon(IconTint.slate, MiuixIcons.Useful.Info) }, onClick = onLicenses)
+                if (onAbout != null) SuperArrow(title = str(Msg.ABOUT_TITLE), rightText = "v${BuildConfig.VERSION_NAME}", leftAction = { AboutRowIcon() }, onClick = onAbout)
             } }
-            item(key = "guide") { SectionTitle(tr("사용 안내", "使用说明")); Card(insideMargin = PaddingValues(vertical = OniTokens.space)) {
-                GuideStep(1, tr("LSPosed에서 모듈 활성화", "在 LSPosed 中启用模块"), tr("적용 대상으로 KanadeDX를 선택하세요.", "作用域请选择 KanadeDX。"))
-                GuideStep(2, tr("KanadeDX 실행", "启动 KanadeDX"), tr("오른쪽 위 Oniimai 설정 버튼은 끌어서 옮길 수 있습니다.", "右上角的 Oniimai 设置按钮可拖动移动。"))
-                GuideStep(3, tr("게임 안 Onii 설정", "游戏内 Onii 设置"), tr("USB 연결, 외부 화면과 LED를 조절합니다. 미리보기는 USB에 연결하지 않습니다.", "调整 USB 连接、外接屏幕和 LED。预览不会连接 USB。"))
+            item(key = "guide") { SectionTitle(str(Msg.HOME_GUIDE)); Card(insideMargin = PaddingValues(vertical = OniTokens.space)) {
+                GuideStep(1, str(Msg.HOME_GUIDE_STEP1), str(Msg.HOME_GUIDE_STEP1_DETAIL))
+                GuideStep(2, str(Msg.HOME_GUIDE_STEP2), str(Msg.HOME_GUIDE_STEP2_DETAIL))
+                GuideStep(3, str(Msg.HOME_GUIDE_STEP3), str(Msg.HOME_GUIDE_STEP3_DETAIL))
             } }
             item(key = "footer") {
                 Box(Modifier.fillMaxWidth().padding(OniTokens.inset), contentAlignment = Alignment.Center) { Caption("KanadeDX 1.60 / 1.65 · Android 9+") }
@@ -100,24 +109,37 @@ import java.util.Locale
 
 @Composable internal fun SettingsScreen(tab: Int, groups: List<NativeSettings.Group>, language: String, onTab: (Int) -> Unit, refresh: () -> Unit,
                                         close: () -> Unit, onLanguage: () -> Unit, onLicenses: () -> Unit,
-                                        listState: @Composable (Int) -> LazyListState = { rememberLazyListState() }) {
-    Page(tr("컨트롤러 설정", "控制器设置"), back = close) {
-        TabRow(listOf(tr("연결", "连接"), tr("화면", "屏幕"), tr("버튼", "按钮"), "LED"), tab,
+                                        listState: @Composable (Int) -> LazyListState = { rememberLazyListState() }, general: Boolean = true,
+                                        onAbout: (() -> Unit)? = null) {
+    Page(str(Msg.SETTINGS_TITLE), back = close) {
+        TabRow(listOf(str(Msg.SETTINGS_TAB_CONNECTION), str(Msg.COMMON_DISPLAY), str(Msg.SETTINGS_TAB_BUTTONS), "LED"), tab,
             modifier = Modifier.padding(horizontal = OniTokens.inset), height = OniTokens.target, onTabSelected = onTab)
-        key(tab) {
-            LazyColumn(state = listState(tab), modifier = Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
+        // The tab on screen always reads the newest groups (states and switches change while it is open); a
+        // tab sliding out keeps the groups it last showed, so it does not show the next tab's while it leaves.
+        val shown = remember { HashMap<Int, List<NativeSettings.Group>>() }
+        shown[tab] = groups
+        androidx.compose.animation.AnimatedContent(targetState = tab, label = "tab", transitionSpec = {
+            // The new tab comes in from the side it was chosen on, a short way, over a cross-fade.
+            val side = if (targetState > initialState) 1 else -1
+            (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(280)) { side * it / 5 } +
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(280))) togetherWith
+            (androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(220)) { -side * it / 5 } +
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(180)))
+        }) { page ->
+            LazyColumn(state = listState(page), modifier = Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
                 item(key = "hint") {
-                    Caption(tr("자동 저장 · 설정 중에는 게임 입력 일시 정지", "自动保存 · 设置时暂停游戏输入"),
+                    Caption(str(Msg.SETTINGS_AUTOSAVE_HINT),
                         Modifier.padding(horizontal = OniTokens.inset))
                 }
-                itemsIndexed(groups, key = { index, _ -> "group-$index" }) { _, group -> SettingsGroup(group, refresh) }
+                itemsIndexed(if (page == tab) groups else shown[page] ?: emptyList(), key = { index, _ -> "group-$index" }) { _, group -> SettingsGroup(group, refresh) }
                 // App-level preferences sit together at the end of the first tab instead of bracketing the hardware groups.
-                if (tab == 0) item(key = "general") {
+                if (page == 0 && general) item(key = "general") {
                     Column {
-                        SectionTitle(tr("일반", "通用"))
+                        SectionTitle(str(Msg.SETTINGS_GENERAL))
                         Card {
-                            SuperArrow(tr("언어", "语言"), rightText = language, leftAction = { RowIcon(IconTint.green, label = "文") }, onClick = onLanguage)
-                            SuperArrow(title = tr("라이선스 · 출처", "许可与来源"), summary = "GPL-3.0 · MPL-2.0", leftAction = { RowIcon(IconTint.slate, MiuixIcons.Useful.Info) }, onClick = onLicenses)
+                            SuperArrow(str(Msg.COMMON_LANGUAGE), rightText = language, leftAction = { RowIcon(IconTint.green, label = I18n.LANGUAGE_GLYPH) }, onClick = onLanguage)
+                            SuperArrow(title = str(Msg.LICENSE_TITLE), summary = "GPL-3.0 · MPL-2.0", leftAction = { RowIcon(IconTint.slate, MiuixIcons.Useful.Info) }, onClick = onLicenses)
+                            if (onAbout != null) SuperArrow(title = str(Msg.ABOUT_TITLE), rightText = "v${BuildConfig.VERSION_NAME}", leftAction = { AboutRowIcon() }, onClick = onAbout)
                         }
                     }
                 }
@@ -193,10 +215,10 @@ private val DENSE_ROW = PaddingValues(horizontal = OniTokens.inset, vertical = O
                 borderColor = if (valid || text.isEmpty()) MiuixTheme.colorScheme.primary else ERROR_TEXT,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { save() }))
-            Caption(if (valid || text.isEmpty()) tr("범위: $min–$max", "范围：$min–$max") else tr("$min–$max 사이의 숫자를 입력하세요", "请输入 $min–$max 之间的数字"),
+            Caption(if (valid || text.isEmpty()) str(Msg.NUMBER_RANGE, min, max) else str(Msg.NUMBER_ENTER_BETWEEN, min, max),
                 Modifier.padding(horizontal = OniTokens.space), color = if (valid || text.isEmpty()) MiuixTheme.colorScheme.onSurfaceVariantSummary else ERROR_TEXT)
             Spacer(Modifier.height(OniTokens.space))
-            Action(tr("저장", "保存"), true, Modifier.fillMaxWidth(), enabled = valid) { save() }
+            Action(str(Msg.COMMON_SAVE), true, Modifier.fillMaxWidth(), enabled = valid) { save() }
         }
     }
 }
@@ -207,13 +229,13 @@ private val DENSE_ROW = PaddingValues(horizontal = OniTokens.inset, vertical = O
     // Live preview, but only when the whole percentage changes: a drag emits a value per frame
     // and each accepted value is written to the LED controller.
     val send: (Int) -> Unit = { next -> if (next != sent) { sent = next; onChange(next) } }
-    Page(tr("LED 밝기", "LED 亮度"), back = onBack) {
+    Page(str(Msg.SETTINGS_LED_BRIGHTNESS), back = onBack) {
         Card(Modifier.padding(OniTokens.inset), insideMargin = PaddingValues(OniTokens.inset)) {
             Text("${value.toInt()}%", fontSize = OniTokens.displayMetric, fontWeight = FontWeight.SemiBold, style = TextStyle(fontFeatureSettings = "tnum"))
             Spacer(Modifier.height(OniTokens.gap))
             Slider(value = value, onValueChange = { value = it; send(it.toInt()) }, valueRange = 0f..100f,
                 onValueChangeFinished = { send(value.toInt()) },
-                modifier = Modifier.heightIn(min = OniTokens.target).semantics { contentDescription = tr("LED 밝기", "LED 亮度") })
+                modifier = Modifier.heightIn(min = OniTokens.target).semantics { contentDescription = str(Msg.SETTINGS_LED_BRIGHTNESS) })
             Spacer(Modifier.height(OniTokens.space))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(OniTokens.space)) {
                 listOf(25, 50, 75, 100).forEach { preset ->
@@ -221,88 +243,586 @@ private val DENSE_ROW = PaddingValues(horizontal = OniTokens.inset, vertical = O
                 }
             }
         }
-        Caption(tr("변경 즉시 LED에 적용되고 저장됩니다.", "更改会立即应用到 LED 并保存。"), Modifier.padding(horizontal = OniTokens.titleInset))
+        Caption(str(Msg.BRIGHTNESS_NOTE), Modifier.padding(horizontal = OniTokens.titleInset))
     }
 }
 
 /** Values chosen in first-run setup, written by the caller only when the user finishes. */
 internal class SetupChoices(var external: Boolean, var clockwise: Boolean, var auto: Boolean, var led: Boolean, var aime: Boolean)
 
-@Composable internal fun SetupScreen(initialLanguage: String, initial: SetupChoices, onLanguage: (String) -> Unit, onCancel: () -> Unit, onFinish: (SetupChoices) -> Unit) {
-    var step by remember { mutableIntStateOf(0) }
+/**
+ * First-run setup. [signals] reports what the app really knows about the controller (read about 30 times a
+ * second); every connection or test result shown here comes from it, never from an animation finishing.
+ * [onSearch] lets the app look for the controller from the connection step on, [onRetry] asks it to look
+ * again after a refusal or failure, and [onScreen] receives what setup shows, for the controller's own screen
+ * and lights.
+ * Opened again after setup was finished ([firstRun] false), the welcome screen has a back arrow that closes it.
+ * The phone's back goes the way the page's back arrows do; it never skips the steps to close setup.
+ */
+@Composable internal fun SetupScreen(initialLanguage: String, initial: SetupChoices, onLanguage: (String) -> Unit, onCancel: () -> Unit,
+                                     onFinish: (SetupChoices) -> Unit, signals: () -> SetupSignals = { SetupSignals() },
+                                     onSearch: () -> Unit = {}, onRetry: () -> Unit = {}, firstRun: Boolean = true,
+                                     onScreen: (SetupView) -> Unit = {},
+                                     advanced: (tab: Int) -> List<NativeSettings.Group> = { emptyList() },
+                                     stored: () -> SetupChoices? = { null }) {
+    // Welcome; then the language (so every page reads in it), connection, the built-in screen's direction (so
+    // the input check and lighting read upright on the controller), input check and lighting; then done. Steps
+    // are SetupLights.WELCOME to DONE; the numbered pages run from FIRST to LAST.
+    var step by remember { mutableIntStateOf(SetupLights.WELCOME) }
     var language by remember { mutableStateOf(initialLanguage) }
+    // From the connection step on, the app may look for the controller and ask for USB permission.
+    LaunchedEffect(step) { if (step >= SetupLights.CONNECT) onSearch() }
     var external by remember { mutableStateOf(initial.external) }
     var clockwise by remember { mutableStateOf(initial.clockwise) }
     var auto by remember { mutableStateOf(initial.auto) }
     var led by remember { mutableStateOf(initial.led) }
     var aime by remember { mutableStateOf(initial.aime) }
+    // Detailed settings save at once; a choice they change is taken over here, so finishing cannot undo it.
+    // [stored] reports the values as the detailed settings show them (the live rotation preview, the running
+    // LED and Aime state), and the comparison restarts whenever they open, so every change made there, even one
+    // back to what was saved before, is a change from what they showed and wins over setup's unsaved choice.
+    var lastStored by remember { mutableStateOf(stored()) }
+    // Detailed settings: the Settings page itself, on the tab that goes with the step, until its back arrow.
+    var advancedTab by remember { mutableStateOf<Int?>(null) }
+    // The tab the detailed settings page showed last, for it to keep while it slides out.
+    var lastAdvanced by remember { mutableIntStateOf(0) }
+    val adoptStored = {
+        val now = stored(); val before = lastStored
+        if (now != null && before != null) {
+            if (now.external != before.external) external = now.external
+            if (now.clockwise != before.clockwise) clockwise = now.clockwise
+            if (now.auto != before.auto) auto = now.auto
+            if (now.led != before.led) led = now.led
+            if (now.aime != before.aime) aime = now.aime
+        }
+        lastStored = now
+    }
+    var live by remember { mutableStateOf(signals()) }
+    // Paused while setup's window has no focus (the USB permission dialog on top, the game in front); read
+    // again on the first frame after it returns.
+    val active = motionActive()
+    LaunchedEffect(active) {
+        if (!active) return@LaunchedEffect
+        var last = 0L
+        while (true) withFrameNanos { if (it - last >= 33_000_000L) { last = it; live = signals() } }
+    }
+    // Buttons and touch areas that have really answered, so progress stays when they are let go.
+    var checkedButtons by remember { mutableIntStateOf(0) }
+    var checkedTouches by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(live) {
+        if (live.live && live.buttonsLinked) checkedButtons = checkedButtons or (live.buttons and 0xFF)
+        if (live.live && live.touchLinked) checkedTouches = checkedTouches or live.touches
+    }
+    var inputView by remember { mutableStateOf(InputView.BUTTONS) }
+    // All eight buttons answered: move on to the touch areas by itself.
+    LaunchedEffect(checkedButtons) { if (checkedButtons == 0xFF) inputView = InputView.TOUCH }
+    var focusAime by remember(step) { mutableStateOf(false) }
+    val scene = when (step) {
+        SetupLights.WELCOME -> MotionScene.INTRO; SetupLights.SCREEN -> MotionScene.MONITOR; SetupLights.LANGUAGE -> MotionScene.LANGUAGE
+        SetupLights.CONNECT -> MotionScene.CONNECT; SetupLights.INPUT -> MotionScene.INPUT; SetupLights.LIGHTING -> MotionScene.LIGHTING
+        else -> MotionScene.DONE
+    }
+    val labels = MotionLabels(str(Msg.SETUP_CALLOUT_USB), str(Msg.SETUP_CALLOUT_LED), str(Msg.SETUP_CALLOUT_AIME), str(Msg.SETUP_CALLOUT_SCREEN),
+        str(Msg.SETUP_DONE_READY))
+    val link = if (live.live) live.link else LinkState.WAITING
+    // What is missing from a partial link, in the words the Settings status already uses.
+    val partialStatus = when {
+        live.buttonsLinked && !live.touchLinked -> Msg.INPUT_STATUS_BUTTONS_ONLY
+        live.touchLinked && !live.buttonsLinked -> Msg.INPUT_STATUS_TOUCH_ONLY
+        else -> Msg.SETUP_CONNECT_STATUS_PARTIAL
+    }
+    val inputLinked = live.live && (if (inputView == InputView.BUTTONS) live.buttonsLinked else live.touchLinked)
+    val page = when (step) {
+        SetupLights.CONNECT -> StepText(str(Msg.SETTINGS_CONNECTION_GROUP),
+            str(when (link) { LinkState.WAITING -> Msg.SETUP_CONNECT_TITLE_WAITING; LinkState.PERMISSION -> Msg.SETUP_CONNECT_TITLE_PERMISSION
+                LinkState.CONNECTED -> Msg.SETUP_CONNECT_TITLE_CONNECTED; LinkState.PARTIAL -> Msg.SETUP_CONNECT_TITLE_PARTIAL
+                LinkState.FAILED -> Msg.SETUP_CONNECT_TITLE_FAILED }),
+            str(when (link) { LinkState.WAITING -> Msg.SETUP_CONNECT_BODY_WAITING; LinkState.PERMISSION -> Msg.SETUP_CONNECT_BODY_PERMISSION
+                LinkState.CONNECTED -> Msg.SETUP_CONNECT_BODY_CONNECTED; LinkState.PARTIAL -> Msg.SETUP_CONNECT_BODY_PARTIAL
+                LinkState.FAILED -> Msg.SETUP_CONNECT_BODY_FAILED }),
+            // Before setup is finished the app does not look for USB devices, so say when it will.
+            if (!live.live) StepStatus(str(if (auto) Msg.SETUP_CONNECT_STATUS_AUTO else Msg.SETUP_CONNECT_STATUS_MANUAL), StepTone.QUIET)
+            else when (link) {
+                LinkState.WAITING -> StepStatus(str(Msg.SETUP_CONNECT_STATUS_WAITING), StepTone.WAIT)
+                LinkState.PERMISSION -> StepStatus(str(Msg.SETUP_CONNECT_STATUS_PERMISSION), StepTone.WAIT)
+                // Everything expected is open; name only what that is.
+                LinkState.CONNECTED -> StepStatus(str(when {
+                    live.touchLinked && !live.buttonsLinked -> Msg.INPUT_STATUS_TOUCH
+                    live.buttonsLinked && !live.touchLinked -> Msg.INPUT_STATUS_BUTTONS
+                    else -> Msg.SETUP_CONNECT_STATUS_CONNECTED
+                }), StepTone.OK)
+                LinkState.PARTIAL -> StepStatus(str(partialStatus), StepTone.WARN)
+                LinkState.FAILED -> StepStatus(str(Msg.SETUP_CONNECT_STATUS_FAILED), StepTone.WARN)
+            })
+        SetupLights.INPUT -> StepText(str(Msg.SETUP_INPUT_EYEBROW),
+            str(if (inputView == InputView.BUTTONS) Msg.SETUP_INPUT_BUTTONS_HEADING else Msg.SETUP_INPUT_TOUCH_HEADING),
+            str(if (inputView == InputView.BUTTONS) Msg.SETUP_INPUT_BUTTONS_BODY else Msg.SETUP_INPUT_TOUCH_BODY),
+            if (!inputLinked && link == LinkState.PARTIAL) StepStatus(str(partialStatus), StepTone.WARN)
+            else if (!inputLinked) StepStatus(str(Msg.SETUP_INPUT_UNAVAILABLE), StepTone.QUIET)
+            else if (inputView == InputView.BUTTONS) StepStatus(str(Msg.SETUP_INPUT_BUTTONS_COUNT, checkedButtons.countOneBits()), StepTone.INFO)
+            else StepStatus(str(Msg.SETUP_INPUT_TOUCH_COUNT, checkedTouches.countOneBits()), StepTone.INFO))
+        SetupLights.LIGHTING -> StepText(str(Msg.SETUP_LIGHTING_EYEBROW), str(Msg.SETUP_LIGHTING_HEADING), str(Msg.SETUP_LIGHTING_BODY),
+            // The controller's lights follow this step whenever they can be reached; otherwise say why not.
+            if (!led) StepStatus(str(Msg.SETUP_LIGHTING_OFF), StepTone.QUIET)
+            else if (live.live && live.ledLinked) StepStatus(str(Msg.SETUP_LIGHTING_LIVE), StepTone.OK)
+            else StepStatus(str(Msg.SETUP_LIGHTING_UNLINKED), StepTone.WAIT))
+        SetupLights.LANGUAGE -> StepText(I18n.LANGUAGE_TITLE, str(Msg.SETUP_LANGUAGE_HEADING), str(Msg.SETUP_LANGUAGE_BODY),
+            StepStatus(str(Msg.SETUP_LANGUAGE_HINT), StepTone.QUIET))
+        else -> StepText(str(Msg.SETUP_MONITOR_TITLE), str(Msg.SETUP_MONITOR_HEADING), str(Msg.SETUP_MONITOR_BODY),
+            // The screen is read directly (a display, not a USB port), whether or not the controller is connected.
+            // "Showing" only when the game really is on it; otherwise setup's own page is, with "this side up".
+            when {
+                !live.screenAttached -> StepStatus(str(Msg.SETUP_MONITOR_STATUS_OFF), StepTone.QUIET)
+                !external -> StepStatus(str(Msg.SETUP_MONITOR_STATUS_DISABLED), StepTone.QUIET)
+                live.screenShowing -> StepStatus(str(Msg.SETUP_MONITOR_STATUS_ON), StepTone.OK)
+                else -> StepStatus(str(Msg.SETUP_MONITOR_HINT), StepTone.INFO)
+            })
+    }
+    // What the controller's own screen and lights show: this page's words, or the welcome and done screens'.
+    val shown = when (step) {
+        SetupLights.WELCOME -> StepText("", str(Msg.SETUP_WELCOME), str(Msg.SETUP_WELCOME_BODY), StepStatus(str(Msg.SETUP_SCREEN_PHONE), StepTone.QUIET))
+        SetupLights.DONE -> StepText("", str(Msg.SETUP_FINISH), str(Msg.SETUP_DONE_BODY), when (link) {
+            LinkState.CONNECTED -> StepStatus(str(Msg.SETUP_DONE_CONNECTED), StepTone.OK)
+            LinkState.PARTIAL -> StepStatus(str(Msg.SETUP_DONE_PARTIAL), StepTone.WARN)
+            else -> StepStatus(str(Msg.SETUP_DONE_LATER), StepTone.QUIET)
+        })
+        else -> page
+    }
+    val view = SetupView(step, clockwise, external, led, live, inputView, checkedButtons, checkedTouches,
+        shown.eyebrow, shown.heading, shown.body, shown.status.text, shown.status.tone.ordinal, rotationHeld = advancedTab != null)
+    LaunchedEffect(view) { onScreen(view) }
+    // The phone's back, as the back arrow on screen: out of the detailed settings, one step back, from done to
+    // lighting, and from the first step to the welcome screen. Only the welcome screen's back closes setup, and
+    // only where its arrow does (opened again from Settings); on first run it stays.
+    PageBack {
+        when {
+            advancedTab != null -> { advancedTab = null; adoptStored() }
+            step == SetupLights.DONE -> step = SetupLights.LAST
+            step > SetupLights.WELCOME -> step--
+            !firstRun -> onCancel()
+        }
+    }
     key(language) {
-        Page(if (step == 0) "Language / 语言" else if (step == 1) tr("모니터 방향", "显示器方向") else tr("컨트롤러 연결", "控制器连接"),
-            back = { if (step == 0) onCancel() else step-- }) {
-            LazyColumn(Modifier.weight(1f).miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
-                item {
-                    Column(Modifier.padding(horizontal = OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.space)) {
-                        StepIndicator(step, 3)
-                        Caption(tr("초기 설정", "初始设置") + " · ${step+1} / 3")
+      androidx.compose.animation.Crossfade(targetState = if (step == SetupLights.WELCOME) 0 else if (step == SetupLights.DONE) 2 else 1,
+          animationSpec = androidx.compose.animation.core.tween(450), label = "stage") { screen ->
+        if (screen == 0) WelcomeScreen(labels, view, onStart = { step = SetupLights.FIRST }, onClose = if (firstRun) null else onCancel)
+        else if (screen == 2) DoneScreen(SetupChoices(external, clockwise, auto, led, aime), link, labels, view, onBack = { step = SetupLights.LAST },
+            onStart = { onFinish(SetupChoices(external, clockwise, auto, led, aime)) })
+        // Detailed settings slide in over the step from the right, and back out to it, like any other page.
+        else androidx.compose.animation.AnimatedContent(targetState = advancedTab != null, label = "advanced", transitionSpec = {
+            val enter = androidx.compose.animation.core.tween<androidx.compose.ui.unit.IntOffset>(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            if (targetState) (androidx.compose.animation.slideInHorizontally(enter) { it } togetherWith
+                (androidx.compose.animation.slideOutHorizontally(enter) { -it / 4 } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(320))))
+                .apply { targetContentZIndex = 1f }
+            else ((androidx.compose.animation.slideInHorizontally(enter) { -it / 4 } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(320))) togetherWith
+                androidx.compose.animation.slideOutHorizontally(enter) { it }).apply { targetContentZIndex = -1f }
+        }) { open ->
+        if (open) {
+            val tab = advancedTab ?: lastAdvanced
+            var groups by remember(tab) { mutableStateOf(advanced(tab)) }
+            val refresh = { groups = advanced(tab); adoptStored() }
+            // Read again every two seconds, as the Settings panel does, so connection states stay current.
+            LaunchedEffect(tab) { while (true) { kotlinx.coroutines.delay(2000); refresh() } }
+            SettingsScreen(tab, groups, "", onTab = { advancedTab = it; lastAdvanced = it }, refresh = refresh,
+                close = { advancedTab = null; adoptStored() }, onLanguage = {}, onLicenses = {}, general = false)
+        }
+        else {
+            // The main button never claims a result: waiting for permission disables it, a failure offers a retry.
+            val primary: Pair<String, (() -> Unit)?> = when {
+                step == SetupLights.CONNECT && live.live && link == LinkState.PERMISSION -> str(Msg.SETUP_CONNECT_PERMISSION_WAIT) to null
+                step == SetupLights.CONNECT && live.live && link == LinkState.FAILED -> str(Msg.SETUP_CONNECT_RETRY) to onRetry
+                step == SetupLights.CONNECT && live.live && link == LinkState.WAITING -> str(Msg.SETUP_CONNECT_LATER) to { step += 1 }
+                else -> str(Msg.SETUP_NEXT) to { step += 1 }
+            }
+            val secondary: Pair<String, () -> Unit>? = when {
+                step == SetupLights.CONNECT && live.live && link == LinkState.FAILED -> str(Msg.SETUP_CONNECT_LATER) to { step += 1 }
+                step == SetupLights.CONNECT && live.live && link == LinkState.PARTIAL -> str(Msg.SETUP_CONNECT_RETRY) to onRetry
+                else -> null
+            }
+            SetupStepPage(step, page, primary, secondary, onBack = { step-- },
+                // One motion scene for every step, so the controller stays put and only the guidance changes.
+                hero = { SetupMotion(scene, live, labels, external, led, clockwise, height = 340.dp, inputView = inputView,
+                    checkedButtons = checkedButtons, checkedTouches = checkedTouches, focusAime = focusAime, fadeEdges = true, view = view) }) {
+                when (step) {
+                    SetupLights.CONNECT -> Column {
+                        Card { SuperSwitch(title = str(Msg.SETTINGS_AUTO_CONNECT), checked = auto, onCheckedChange = { auto = it }) }
+                        SetupAdvanced { lastStored = stored(); advancedTab = 0; lastAdvanced = 0 }
                     }
-                }
-                item(key = "hero-$step") {
-                    when (step) {
-                        0 -> StepHero(tr("사용할 언어를 고르세요", "选择使用的语言"), tr("언어는 설정에서 언제든 변경할 수 있습니다.", "随时可在设置中更改语言。"), label = "文")
-                        1 -> StepHero(tr("외부 모니터 출력", "外接显示器输出"), tr("가로 16:9 모니터에 게임을 90° 회전해 채웁니다. 폰에는 위젯 대시보드가 표시됩니다.", "将游戏旋转 90° 填满横向 16:9 显示器。手机显示小组件仪表盘。"), icon = MiuixIcons.Useful.Refresh)
-                        else -> StepHero(tr("컨트롤러 연결", "控制器连接"), tr("장치 이름으로 Touch·IO4·LED·NFC 포트를 찾습니다. USB 연결 권한을 허용해 주세요.", "按名称查找 Touch、IO4、LED 和 NFC 端口。请授予 USB 连接权限。"), icon = MiuixIcons.Useful.Settings)
+                    SetupLights.INPUT -> Column {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(OniTokens.space, Alignment.CenterHorizontally)) {
+                            for ((view, title) in listOf(InputView.BUTTONS to Msg.SETUP_INPUT_BUTTONS_TAB, InputView.TOUCH to Msg.SETUP_INPUT_TOUCH_TAB))
+                                HeaderAction(str(title), primary = inputView == view) { inputView = view }
+                        }
+                        SetupAdvanced { lastStored = stored(); advancedTab = 2; lastAdvanced = 2 }
                     }
-                }
-                item { Card {
-                    when (step) {
-                        0 -> UiLanguage.NAMES.forEachIndexed { i, title ->
-                            val code = if (i == 0) "ko" else "zh-Hans"
+                    SetupLights.LIGHTING -> Column {
+                        Card {
+                            SuperSwitch(title = str(Msg.SETTINGS_LED_GROUP), checked = led, onCheckedChange = { led = it; focusAime = false })
+                            SuperSwitch(title = str(Msg.SETTINGS_AIME_TOGGLE), checked = aime, onCheckedChange = { aime = it; focusAime = true })
+                        }
+                        SetupAdvanced { lastStored = stored(); advancedTab = 3; lastAdvanced = 3 }
+                    }
+                    SetupLights.LANGUAGE -> Card {
+                        I18n.NAMES.forEachIndexed { i, title ->
+                            val code = I18n.CODES[i]
                             OptionRow(title, selected = language == code, onClick = {
                                 if (language != code) { language = code; onLanguage(code) }
                             })
                         }
-                        1 -> SuperSwitch(title = tr("외부 화면으로 게임 출력", "向外接屏幕输出游戏"), summary = tr("모니터 연결 시 자동 출력", "连接显示器时自动输出"), checked = external, onCheckedChange = { external = it })
-                        else -> {
-                            SuperSwitch(title = tr("자동 연결", "自动连接"), checked = auto, onCheckedChange = { auto = it })
-                            SuperSwitch(title = tr("게임 LED 연동", "游戏 LED 联动"), checked = led, onCheckedChange = { led = it })
-                            SuperSwitch(title = tr("Aime 카드 인식", "读取 Aime 卡"), checked = aime, onCheckedChange = { aime = it })
-                        }
                     }
-                } }
-                // Rotation only matters with external output on; keep it visible but disabled otherwise.
-                if (step == 1) item {
-                    Column {
-                        SectionTitle(tr("회전 방향", "旋转方向"))
+                    else -> {
+                        Card { SuperSwitch(title = str(Msg.SETTINGS_DISPLAY_TOGGLE), summary = str(Msg.SETTINGS_DISPLAY_TOGGLE_SUMMARY), checked = external,
+                            onCheckedChange = { external = it }) }
+                        // Rotation only matters with output on; keep it visible but disabled otherwise.
+                        SectionTitle(str(Msg.SETTINGS_DISPLAY_ROTATION))
                         Card {
-                            OptionRow(tr("90° · 시계 방향", "90° · 顺时针"), selected = clockwise, enabled = external, onClick = { clockwise = true })
-                            OptionRow(tr("270° · 반대 방향", "270° · 逆时针"), selected = !clockwise, enabled = external, onClick = { clockwise = false })
+                            OptionRow(str(Msg.SETUP_ROTATION_CW), selected = clockwise, enabled = external, onClick = { clockwise = true })
+                            OptionRow(str(Msg.SETUP_ROTATION_CCW), selected = !clockwise, enabled = external, onClick = { clockwise = false })
                         }
+                        SetupAdvanced { lastStored = stored(); advancedTab = 1; lastAdvanced = 1 }
                     }
                 }
             }
-            Action(if(step == 2) tr("설정 완료", "完成设置") else tr("다음", "下一步"), true,
-                Modifier.fillMaxWidth().padding(horizontal = OniTokens.inset, vertical = OniTokens.gap)) {
-                if (step < 2) step++ else onFinish(SetupChoices(external, clockwise, auto, led, aime))
+        }
+        }
+      }
+    }
+}
+
+/**
+ * The way from a setup step to detailed settings: the Settings page itself (connection, screen, buttons,
+ * LED), opened on the tab that goes with the step. Its changes save at once, as in Settings.
+ */
+@Composable private fun SetupAdvanced(onOpen: () -> Unit) {
+    Card(Modifier.padding(top = OniTokens.gap)) {
+        SuperArrow(title = str(Msg.SETUP_ADVANCED), summary = str(Msg.SETUP_ADVANCED_SUMMARY), onClick = onOpen)
+    }
+}
+
+private class StepText(val eyebrow: String, val heading: String, val body: String, val status: StepStatus)
+private class StepStatus(val text: String, val tone: StepTone)
+private enum class StepTone { QUIET, INFO, WAIT, OK, WARN }
+
+/**
+ * First screen of setup, after ColorOS: a greeting that cycles through every UI language over soft drifting
+ * colour, the controller appearing above it, and one round arrow button to begin.
+ */
+@Composable private fun WelcomeScreen(labels: MotionLabels, view: SetupView?, onStart: () -> Unit, onClose: (() -> Unit)? = null) {
+    val dark = isSystemInDarkTheme()
+    val clock = backdropClock()
+    // The current language first, then the others; changes every 2.6 s on the backdrop's clock, so it holds
+    // still with the backdrop. Only a change of greeting recomposes; the moving backdrop just redraws.
+    val greetings = remember { I18n.CODES.indices.map { I18n.textIn(I18n.CODES[(I18n.index() + it) % I18n.CODES.size], Msg.SETUP_WELCOME) } }
+    val shown by remember { derivedStateOf { ((clock.longValue / 2_600_000_000L) % greetings.size).toInt() } }
+    Box(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) { drawAurora(clock.longValue / 1e9f, dark) }
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = OniTokens.section),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            // Opened again from Settings: a way back out before starting over.
+            if (onClose != null) Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) { BackButton(onClose) }
+            SetupBody(Modifier.weight(1f)) { art ->
+                SetupMotion(MotionScene.INTRO, SetupSignals(), labels, screens = false, leds = false, clockwise = false,
+                    Modifier.widthIn(max = art * 1.8f), height = art, intro = true, view = view)
+                Spacer(Modifier.height(OniTokens.section))
+                androidx.compose.animation.AnimatedContent(targetState = shown, label = "greeting", transitionSpec = {
+                    (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(600)) +
+                        androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(600)) { it / 3 }) togetherWith
+                    (androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(350)) +
+                        androidx.compose.animation.slideOutVertically(androidx.compose.animation.core.tween(350)) { -it / 3 })
+                }) { index ->
+                    // One line, shrinking only as far as the width needs, so large text never breaks the word.
+                    Text(greetings[index], fontSize = 40.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1,
+                        autoSize = TextAutoSize.StepBased(20.sp, 40.sp))
+                }
+                Spacer(Modifier.height(OniTokens.space))
+                Text(str(Msg.SETUP_WELCOME_BODY), fontSize = OniTokens.label, textAlign = TextAlign.Center,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            }
+            Spacer(Modifier.height(OniTokens.space))
+            Button(onClick = onStart, cornerRadius = 32.dp, minWidth = 64.dp, minHeight = 64.dp,
+                colors = ButtonDefaults.buttonColorsPrimary(), insideMargin = PaddingValues(0.dp),
+                modifier = Modifier.size(64.dp).semantics { contentDescription = str(Msg.SETUP_WELCOME_START) }) {
+                androidx.compose.foundation.Canvas(Modifier.size(26.dp)) {
+                    val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.6.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        join = androidx.compose.ui.graphics.StrokeJoin.Round)
+                    val arrow = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(size.width * 0.18f, size.height / 2); lineTo(size.width * 0.82f, size.height / 2)
+                        moveTo(size.width * 0.55f, size.height * 0.24f); lineTo(size.width * 0.82f, size.height / 2); lineTo(size.width * 0.55f, size.height * 0.76f)
+                    }
+                    drawPath(arrow, Color.White, style = stroke)
+                }
+            }
+            Spacer(Modifier.height(OniTokens.space))
+            Caption(str(Msg.SETUP_WELCOME_START))
+            Spacer(Modifier.height(OniTokens.section))
+        }
+    }
+}
+
+/**
+ * Last screen of setup: the framing returns to the whole controller, guides fade away and one quiet light
+ * runs round the ring. "Connected" shows only when the app really saw the controller during setup.
+ */
+@Composable private fun DoneScreen(choices: SetupChoices, link: LinkState, labels: MotionLabels, view: SetupView?, onBack: () -> Unit, onStart: () -> Unit) {
+    val dark = isSystemInDarkTheme()
+    val clock = backdropClock()
+    Box(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) { drawAurora(clock.longValue / 1e9f, dark) }
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) { BackButton(onBack) }
+            SetupBody(Modifier.weight(1f).padding(horizontal = OniTokens.section)) { art ->
+                // As wide as the drawing needs, so the "Ready" tag stays by the controller in landscape.
+                SetupMotion(MotionScene.DONE, SetupSignals(), labels, screens = choices.external, leds = choices.led, clockwise = choices.clockwise,
+                    Modifier.widthIn(max = art * 1.8f), height = art, view = view)
+                Spacer(Modifier.height(OniTokens.section))
+                Text(str(Msg.SETUP_FINISH), fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(OniTokens.space))
+                Text(str(Msg.SETUP_DONE_BODY), fontSize = OniTokens.label, textAlign = TextAlign.Center,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                Spacer(Modifier.height(OniTokens.space))
+                Caption(str(when (link) {
+                    LinkState.CONNECTED -> Msg.SETUP_DONE_CONNECTED
+                    LinkState.PARTIAL -> Msg.SETUP_DONE_PARTIAL
+                    else -> Msg.SETUP_DONE_LATER
+                }))
+            }
+            Action(str(Msg.SETUP_WELCOME_START), true, Modifier.fillMaxWidth().widthIn(max = OniTokens.width)
+                .padding(horizontal = OniTokens.inset, vertical = OniTokens.gap), onClick = onStart)
+        }
+    }
+}
+
+/**
+ * The middle of the welcome and done screens: centred when it fits, scrolling when it does not (a short or
+ * landscape window, large text), with the controller drawn at up to 300 dp but no more than half the height.
+ * The action below it stays on screen either way.
+ */
+@Composable private fun SetupBody(modifier: Modifier, content: @Composable ColumnScope.(art: androidx.compose.ui.unit.Dp) -> Unit) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
+        val art = (maxHeight * 0.5f).coerceIn(120.dp, 300.dp)
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { content(art) }
+    }
+}
+
+/**
+ * The welcome and done screens' drifting backdrop, in nanoseconds, under the same rules as the setup motion:
+ * it holds still while setup's window has no focus or system animations are off, including when they are
+ * turned off while setup stays open.
+ * Read it while drawing, so the backdrop redraws without recomposing.
+ */
+@Composable private fun backdropClock(): androidx.compose.runtime.MutableLongState {
+    val still = motionStill()
+    val active = motionActive()
+    val nanos = remember { mutableLongStateOf(0L) }
+    LaunchedEffect(active, still) {
+        if (!active || still) return@LaunchedEffect
+        val offset = withFrameNanos { it } - nanos.longValue
+        while (true) withFrameNanos { nanos.longValue = it - offset }
+    }
+    return nanos
+}
+
+/**
+ * One setup step, laid out like a device-pairing sheet: back and progress at the top, the step's name,
+ * heading and explanation, the motion large in the middle, the step's choices, then a status line over a
+ * pill-shaped main button. The title and the button stay put while the motion plays.
+ */
+@Composable private fun SetupStepPage(step: Int, text: StepText, primary: Pair<String, (() -> Unit)?>, secondary: Pair<String, () -> Unit>?,
+                                      onBack: () -> Unit, hero: @Composable () -> Unit, choices: @Composable ColumnScope.() -> Unit) {
+    val dark = isSystemInDarkTheme()
+    val colors = MiuixTheme.colorScheme
+    Box(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) { drawShowcase(dark) }
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth().widthIn(max = OniTokens.width).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+                BackButton(onBack)
+                Spacer(Modifier.weight(1f))
+                Caption(str(Msg.SETTINGS_SETUP) + " · ${step + 1} / 5")
+                Spacer(Modifier.width(OniTokens.space))
+                StepIndicator(step, 5, Modifier.width(64.dp))
+                Spacer(Modifier.width(OniTokens.section))
+            }
+            LazyColumn(Modifier.weight(1f).widthIn(max = OniTokens.width).miuiScroll(), contentPadding = PaddingValues(horizontal = OniTokens.inset),
+                verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
+                item(key = "text") {
+                    // New words rise in as the old fade, when the step or what it says changes.
+                    androidx.compose.animation.AnimatedContent(targetState = listOf(text.eyebrow, text.heading, text.body), label = "words", transitionSpec = {
+                        (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260, delayMillis = 60)) +
+                            androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(300)) { it / 6 }) togetherWith
+                        androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140))
+                    }) { (eyebrow, heading, body) ->
+                        Column(Modifier.fillMaxWidth().padding(top = OniTokens.space), horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(OniTokens.space)) {
+                            Text(eyebrow, fontSize = OniTokens.caption, fontWeight = FontWeight.SemiBold, color = colors.primary)
+                            Text(heading, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = OniTokens.inset))
+                            Text(body, fontSize = OniTokens.label, textAlign = TextAlign.Center, color = colors.onSurfaceVariantSummary,
+                                modifier = Modifier.padding(horizontal = OniTokens.inset))
+                        }
+                    }
+                }
+                item(key = "controller") { hero() }
+                item(key = "choices-$step") {
+                    Column(Modifier.animateItem(fadeInSpec = androidx.compose.animation.core.tween(260, delayMillis = 80), placementSpec = null,
+                        fadeOutSpec = androidx.compose.animation.core.tween(120))) { choices() }
+                }
+            }
+            Column(Modifier.fillMaxWidth().widthIn(max = OniTokens.width).padding(horizontal = OniTokens.inset, vertical = OniTokens.gap),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = OniTokens.inset)) {
+                    val dot = when (text.status.tone) {
+                        StepTone.OK, StepTone.INFO, StepTone.WAIT -> colors.primary
+                        StepTone.WARN -> Color(0xFFE8A33A)
+                        StepTone.QUIET -> colors.onSurfaceVariantSummary
+                    }
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
+                    Spacer(Modifier.width(OniTokens.space))
+                    Text(text.status.text, fontSize = OniTokens.caption, textAlign = TextAlign.Center,
+                        color = if (text.status.tone == StepTone.QUIET) colors.onSurfaceVariantSummary else colors.onSurface)
+                }
+                if (secondary != null) TextButton(text = secondary.first, onClick = secondary.second, modifier = Modifier.fillMaxWidth(),
+                    minHeight = 40.dp, colors = ButtonDefaults.textButtonColors(color = Color.Transparent, textColor = colors.primary))
+                else Spacer(Modifier.height(OniTokens.space))
+                TextButton(text = primary.first, onClick = primary.second ?: {}, enabled = primary.second != null, modifier = Modifier.fillMaxWidth(),
+                    minHeight = 54.dp, cornerRadius = 27.dp, colors = ButtonDefaults.textButtonColorsPrimary())
             }
         }
     }
 }
 
+/**
+ * What the About page shows. Game-side values are null where they are not known: the module's own launcher
+ * has no running game, so its page leaves out the module state and the controller.
+ */
+internal data class AboutInfo(val version: String, val channel: String, val deviceName: String, val device: String, val android: String,
+                              val osBuild: String, val gameVersion: String?, val module: String?, val firmware: String?)
+
+/** The app's icon (drawable/ic_launcher) as a rounded tile: the white ring and its light centre on blue. */
+@Composable internal fun AppLogo(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier.clip(RoundedCornerShape(26))) {
+        val s = size.minDimension / 108f
+        drawRect(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF4A93FF), Color(0xFF007AFF), Color(0xFF0060E0)),
+            androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(size.width, size.height)))
+        drawCircle(Color.White, 32.5f * s, center, style = androidx.compose.ui.graphics.drawscope.Stroke(11f * s))
+        drawCircle(Color(0xFFB8D8FF), 13f * s, center)
+    }
+}
+
+/**
+ * About, in the manner of HyperOS and HyperCeiler: a soft colour wash behind the app's icon, its name in a
+ * gradient and the version; then the phone, the game and the module, diagnostics, and the source and licences.
+ * [info] is read again every second, so a firmware check started here shows its answer.
+ */
+@Composable internal fun AboutScreen(info: () -> AboutInfo, onBack: () -> Unit, onSource: () -> Unit, onLicenses: () -> Unit,
+                                     onFirmware: (() -> Unit)? = null, onDiagnostics: (() -> Unit)? = null) {
+    val dark = isSystemInDarkTheme()
+    val colors = MiuixTheme.colorScheme
+    var shown by remember { mutableStateOf(info()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1000); shown = info() } }
+    val about = shown
+    Box(Modifier.fillMaxSize().background(colors.background)) {
+        // Kept in its own offscreen layer: the large soft gradients are painted once, not again on every scroll frame.
+        androidx.compose.foundation.Canvas(Modifier.fillMaxWidth().height(620.dp)
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }) { drawAboutWash(dark, colors.background) }
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth().widthIn(max = OniTokens.width).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) { BackButton(onBack) }
+            Spacer(Modifier.height(64.dp))
+            AppLogo(Modifier.size(96.dp))
+            Spacer(Modifier.height(18.dp))
+            // The module's full name on one line, as large as the width allows, one gradient across it.
+            androidx.compose.foundation.text.BasicText("Oniimai for KanadeDX", Modifier.fillMaxWidth().padding(horizontal = OniTokens.section),
+                style = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        if (dark) listOf(Color(0xFFFF8CC6), Color(0xFFB596FF), Color(0xFF7FB2FF)) else listOf(Color(0xFFC2417F), Color(0xFF7A3FD8), Color(0xFF3A6FE8)))),
+                maxLines = 1, autoSize = TextAutoSize.StepBased(22.sp, 40.sp))
+            Spacer(Modifier.height(8.dp))
+            Text("${about.version} | ${about.channel}", fontSize = OniTokens.label, color = colors.onSurfaceVariantSummary,
+                style = TextStyle(fontFeatureSettings = "tnum"))
+            Spacer(Modifier.height(88.dp))
+            Column(Modifier.fillMaxWidth().widthIn(max = OniTokens.width).padding(horizontal = OniTokens.inset),
+                verticalArrangement = Arrangement.spacedBy(OniTokens.gap)) {
+                Card(Modifier.fillMaxWidth(), insideMargin = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
+                    Text(about.deviceName, fontSize = 26.sp, color = colors.onSurface)
+                    Spacer(Modifier.height(10.dp))
+                    AboutEntry(about.device, str(Msg.ABOUT_DEVICE))
+                    AboutEntry(about.android, str(Msg.ABOUT_ANDROID))
+                    AboutEntry(about.osBuild, str(Msg.ABOUT_BUILD))
+                }
+                Card(Modifier.fillMaxWidth(), insideMargin = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
+                    Text("KanadeDX", fontSize = 26.sp, color = colors.onSurface)
+                    Spacer(Modifier.height(10.dp))
+                    about.gameVersion?.let { AboutEntry(it, str(Msg.ABOUT_GAME_VERSION)) }
+                    about.module?.let { AboutEntry(it, str(Msg.ABOUT_MODULE)) }
+                    AboutEntry("LSPosed API 102", str(Msg.ABOUT_MODULE_NAME))
+                }
+                if (onFirmware != null || onDiagnostics != null) {
+                    Card {
+                        if (onFirmware != null) SuperArrow(title = str(Msg.SETTINGS_FIRMWARE), summary = about.firmware, onClick = onFirmware)
+                        if (onDiagnostics != null) SuperArrow(title = str(Msg.SETTINGS_COPY_DIAGNOSTICS), summary = about.module, onClick = onDiagnostics)
+                    }
+                }
+                SectionTitle(str(Msg.ABOUT_OTHERS))
+                Card {
+                    SuperArrow(title = str(Msg.ABOUT_SOURCE), summary = str(Msg.ABOUT_SOURCE_SUMMARY), onClick = onSource)
+                    SuperArrow(title = str(Msg.LICENSE_TITLE), summary = "GPL-3.0 · MPL-2.0", onClick = onLicenses)
+                }
+                Box(Modifier.fillMaxWidth().padding(vertical = OniTokens.section), contentAlignment = Alignment.Center) {
+                    Caption("Oniimai for KanadeDX · GPL-3.0-only")
+                }
+            }
+        }
+    }
+}
+
+/** The app's icon at the size of a settings row's icon. */
+@Composable private fun AboutRowIcon() {
+    AppLogo(Modifier.padding(end = OniTokens.inset).size(OniTokens.rowIcon))
+}
+
+/** One fact on an About card: the value, and under it what it is. */
+@Composable private fun AboutEntry(value: String, label: String) {
+    Column(Modifier.padding(vertical = 6.dp)) {
+        Text(value, fontSize = OniTokens.label, color = MiuixTheme.colorScheme.onSurface)
+        Text(label, fontSize = OniTokens.caption, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+    }
+}
+
+/** The colour wash behind the About page's top: pink to lavender to blue, settling into the page colour. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawAboutWash(dark: Boolean, page: Color) {
+    val w = size.width; val h = size.height
+    fun glow(color: Color, x: Float, y: Float, r: Float, alpha: Float) = drawCircle(
+        androidx.compose.ui.graphics.Brush.radialGradient(listOf(color.copy(alpha = alpha), color.copy(alpha = 0f)),
+            androidx.compose.ui.geometry.Offset(x, y), r), r, androidx.compose.ui.geometry.Offset(x, y))
+    if (dark) {
+        glow(Color(0xFF7A2E6A), w * 0.05f, h * 0.18f, w * 0.95f, 0.55f)
+        glow(Color(0xFF4A3A9E), w * 0.55f, h * 0.45f, w * 0.85f, 0.45f)
+        glow(Color(0xFF24408F), w * 1.0f, h * 0.30f, w * 0.75f, 0.45f)
+    } else {
+        glow(Color(0xFFF8BDDC), w * 0.0f, h * 0.20f, w * 1.0f, 0.75f)
+        glow(Color(0xFFD9CCFF), w * 0.55f, h * 0.42f, w * 0.9f, 0.7f)
+        glow(Color(0xFFC6D6FF), w * 1.05f, h * 0.55f, w * 0.8f, 0.7f)
+    }
+    // Settle into the page so the cards sit on plain background.
+    drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(0.6f to page.copy(alpha = 0f), 1f to page, startY = 0f, endY = h))
+}
+
 @Composable internal fun LicenseScreen(version: String, sourceUrl: String, files: List<String>, onBack: () -> Unit, onSource: () -> Unit, onFile: (String) -> Unit) {
-    Page(tr("라이선스 · 출처", "许可与来源"), back = onBack) {
+    Page(str(Msg.LICENSE_TITLE), back = onBack) {
         LazyColumn(Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
             item { Card(insideMargin = PaddingValues(OniTokens.inset)) {
                 Text("Oniimai $version · GPL-3.0-only")
                 Spacer(Modifier.height(OniTokens.gap))
-                Text(tr("비공식 LSPosed 모듈 · kyarameru0\n코드·테스트·문서는 Codex를 사용해 작성·수정했습니다. 외부 코드의 저작권과 라이선스는 각 권리자에게 있습니다.", "非官方 LSPosed 模块 · kyarameru0\n代码、测试和文档使用 Codex 编写和修改。第三方代码的版权和许可归相应权利人所有。"))
+                Text(str(Msg.LICENSE_ABOUT))
                 Spacer(Modifier.height(OniTokens.gap))
-                Text(tr("GPL 조건에 따라 사용·수정·재배포할 수 있으며 보증은 제공되지 않습니다. FeliCa 디코더와 외부 구성요소의 조건도 적용됩니다. 게임·서비스·상표의 권한은 이 라이선스에 포함되지 않습니다.", "可依 GPL 条款使用、修改和再分发，不提供担保。FeliCa 解码器及第三方组件的许可条件同样适用。本许可不授予游戏、服务或商标的权利。"))
+                Text(str(Msg.LICENSE_TERMS))
             } }
             item { Card {
-                SuperArrow(title = tr("소스 코드와 빌드 방법", "源代码与构建说明"), summary = sourceUrl, onClick = onSource)
+                SuperArrow(title = str(Msg.LICENSE_SOURCE), summary = sourceUrl, onClick = onSource)
             } }
             item { Card(insideMargin = PaddingValues(OniTokens.inset)) {
-                Text(tr("APK와 함께 받은 같은 버전의 Source ZIP에도 소스와 빌드 방법이 있습니다. 저장소가 비공개라면 배포자에게 해당 소스를 요청하세요. 아래 원문은 인터넷 없이 볼 수 있습니다.", "随 APK 提供的同版本 Source ZIP 也包含源代码和构建说明。若仓库为私有，请向分发者索取对应源代码。以下许可原文可离线查看。"))
+                Text(str(Msg.LICENSE_OFFLINE))
             } }
             item { Card {
                 files.forEach { name -> SuperArrow(title = name, onClick = { onFile(name) }) }
@@ -314,8 +834,8 @@ internal class SetupChoices(var external: Boolean, var clockwise: Boolean, var a
 @Composable internal fun LicenseDocumentScreen(name: String, paragraphs: List<String>?, failed: Boolean, onBack: () -> Unit) {
     Page(name, back = onBack) {
         LazyColumn(Modifier.fillMaxSize().miuiScroll(), contentPadding = PaddingValues(OniTokens.inset), verticalArrangement = Arrangement.spacedBy(OniTokens.gap), overscrollEffect = null) {
-            if (failed) item { Caption(color = ERROR_TEXT, text = tr("동봉된 원문을 불러오지 못했습니다. 같은 버전의 Source ZIP에서 licenses 폴더를 확인하세요.", "无法载入随附原文。请查看同版本 Source ZIP 中的 licenses 文件夹。")) }
-            else if (paragraphs == null) item { Caption(tr("불러오는 중…", "正在载入…"), Modifier.padding(horizontal = OniTokens.inset)) }
+            if (failed) item { Caption(color = ERROR_TEXT, text = str(Msg.LICENSE_LOAD_FAILED)) }
+            else if (paragraphs == null) item { Caption(str(Msg.COMMON_LOADING), Modifier.padding(horizontal = OniTokens.inset)) }
             else items(paragraphs) { paragraph -> SelectionContainer { Text(paragraph, modifier = Modifier.fillMaxWidth()) } }
         }
     }
@@ -325,20 +845,61 @@ internal class SetupChoices(var external: Boolean, var clockwise: Boolean, var a
 
 @Composable internal fun DashboardHeader(editing: Boolean, preview: Boolean, demo: Boolean, action: () -> Unit) {
     Column(Modifier.background(MiuixTheme.colorScheme.background)) {
-        PageHeader(if (editing) tr("위젯 편집", "编辑小组件") else tr("대시보드", "仪表盘"), action = {
-            HeaderAction(if (editing) tr("저장", "保存") else tr("편집", "编辑"), editing, onClick = action)
+        PageHeader(if (editing) str(Msg.DASHBOARD_EDIT_TITLE) else str(Msg.DASHBOARD_TITLE), action = {
+            HeaderAction(if (editing) str(Msg.COMMON_SAVE) else str(Msg.COMMON_EDIT), editing, onClick = action)
         })
         if (editing || preview) Caption(when {
-            editing -> tr("끌어서 이동 · 모서리로 크기 변경 · 눌러서 옵션", "拖动移动 · 拖角调整大小 · 点击打开选项")
-            demo -> tr("미리보기 · USB 연결 OFF · 실제 게임 데이터 없음", "预览 · USB 未连接 · 无实际游戏数据")
-            else -> tr("저장한 배치는 외부 화면 연결 시에도 사용됩니다", "保存的布局也用于外接屏幕模式")
+            editing -> str(Msg.DASHBOARD_EDIT_HINT)
+            demo -> str(Msg.DASHBOARD_PREVIEW_HINT)
+            else -> str(Msg.DASHBOARD_LAYOUT_HINT)
         }, Modifier.padding(start = OniTokens.inset, end = OniTokens.inset, bottom = OniTokens.gap))
     }
 }
 
+/**
+ * The dashboard's actions as a slim bar of pill buttons, so the widgets keep most of the screen. The same space
+ * above and below as between the widgets (the dashboard adds none of its own), so the buttons sit centred.
+ * Each label keeps to one line where it can: the buttons share the width equally when every label fits its
+ * share, and by what each label needs when one does not. When they cannot all fit side by side (a narrow
+ * screen, large text) they stack, one per line, as the platform's own dialogs do. Buttons side by side always
+ * have one height, with their labels centred.
+ */
 @Composable internal fun DashboardFooter(labels: List<String>, actions: List<() -> Unit>, primaryFirst: Boolean) {
-    Row(Modifier.background(MiuixTheme.colorScheme.background).padding(OniTokens.inset).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(OniTokens.space)) {
-        labels.forEachIndexed { index, label -> Action(label, primaryFirst && index == 0, Modifier.weight(1f), onClick = actions[index]) }
+    Layout(content = { labels.forEachIndexed { index, label -> FooterButton(label, primaryFirst && index == 0, actions[index]) } },
+        modifier = Modifier.background(MiuixTheme.colorScheme.background).fillMaxWidth().padding(horizontal = OniTokens.inset, vertical = 10.dp)
+    ) { buttons, constraints ->
+        val width = constraints.maxWidth
+        if (buttons.isEmpty()) return@Layout layout(width, 0) {}
+        val gap = OniTokens.space.roundToPx()
+        val room = width - gap * (buttons.size - 1)
+        // What each button needs to show its label on one line.
+        val need = buttons.map { it.maxIntrinsicWidth(Constraints.Infinity) }
+        val share = room / buttons.size
+        val widths = when {
+            need.all { it <= share } -> List(buttons.size) { share + if (it < room - share * buttons.size) 1 else 0 }
+            need.sum() <= room -> {
+                val extra = room - need.sum()
+                need.mapIndexed { i, n -> n + extra / buttons.size + if (i < extra % buttons.size) 1 else 0 }
+            }
+            else -> null
+        }
+        if (widths != null) {
+            val height = buttons.indices.maxOf { buttons[it].minIntrinsicHeight(widths[it]) }
+            val placed = buttons.mapIndexed { i, button -> button.measure(Constraints.fixed(widths[i], height)) }
+            layout(width, height) { var x = 0; placed.forEach { it.place(x, 0); x += it.width + gap } }
+        } else {
+            val placed = buttons.map { it.measure(Constraints(minWidth = width, maxWidth = width)) }
+            layout(width, placed.sumOf { it.height } + gap * (placed.size - 1)) { var y = 0; placed.forEach { it.place(0, y); y += it.height + gap } }
+        }
+    }
+}
+
+/** One of the dashboard's pill buttons: Miuix's text button, with its label centred when it has to wrap. */
+@Composable private fun FooterButton(label: String, primary: Boolean, onClick: () -> Unit) {
+    val colors = if (primary) ButtonDefaults.textButtonColorsPrimary() else ButtonDefaults.textButtonColors()
+    Button(onClick = onClick, minHeight = 42.dp, cornerRadius = 21.dp, insideMargin = PaddingValues(horizontal = OniTokens.inset, vertical = 6.dp),
+        colors = ButtonDefaults.buttonColors(colors.color, colors.disabledColor)) {
+        Text(label, color = colors.textColor, style = MiuixTheme.textStyles.button, textAlign = TextAlign.Center)
     }
 }
 
@@ -350,6 +911,9 @@ internal class WidgetState {
     var input by mutableStateOf("")
     var led by mutableStateOf("")
     var output by mutableStateOf("")
+    var inputTone by mutableIntStateOf(NativeSettings.NONE)
+    var ledTone by mutableIntStateOf(NativeSettings.NONE)
+    var outputTone by mutableIntStateOf(NativeSettings.NONE)
     var sensors by mutableStateOf("")
     var minute by mutableLongStateOf(0)
     var is24Hour by mutableStateOf(true)
@@ -390,7 +954,7 @@ internal class WidgetState {
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 SmallMetric("Combo", number("combo"))
-                SmallMetric(tr("DX 잔여", "DX 剩余"), number("dx"))
+                SmallMetric(str(Msg.WIDGET_SCORE_DX), number("dx"))
             }
         }
         "judgments" -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
@@ -425,11 +989,11 @@ internal class WidgetState {
                 autoSize = TextAutoSize.StepBased(OniTokens.sensorLabel, OniTokens.small), style = TextStyle(fontFeatureSettings = "tnum"))
         }
         "connection" -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
-            listOf(tr("입력", "输入") to state.input, "LED" to state.led, tr("화면", "屏幕") to state.output).forEach { (name, value) ->
+            listOf(Triple(str(Msg.WIDGET_CONNECTION_INPUT), state.input, state.inputTone), Triple("LED", state.led, state.ledTone), Triple(str(Msg.COMMON_DISPLAY), state.output, state.outputTone)).forEach { (name, value, tone) ->
                 // Narrow tiles show each status's headline only; the wide tile has room for its second line.
                 val lines = value.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(OniTokens.space)) {
-                    Box(Modifier.padding(top = 5.dp).size(OniTokens.dot).clip(CircleShape).background(connectionTone(value)))
+                    Box(Modifier.padding(top = 5.dp).size(OniTokens.dot).clip(CircleShape).background(connectionTone(value, tone)))
                     Column(Modifier.weight(1f)) {
                         Caption(name)
                         Text(if (state.width == 4) lines.joinToString(" · ") else lines.firstOrNull() ?: "—", fontSize = if (state.width == 4) OniTokens.caption else OniTokens.small,
@@ -441,7 +1005,7 @@ internal class WidgetState {
         "clock" -> {
             val date = remember(state.minute) { Date(state.minute * 60000) }
             val time = SimpleDateFormat(if (state.is24Hour) "HH:mm" else "h:mm", uiLocale()).format(date)
-            val day = SimpleDateFormat(tr("M월 d일", "M月d日"), uiLocale()).format(date)
+            val day = SimpleDateFormat(str(Msg.WIDGET_CLOCK_DATE_PATTERN), uiLocale()).format(date)
             val weekday = SimpleDateFormat("EEEE", uiLocale()).format(date)
             if (state.width == 4) Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OniTokens.section)) {
                 ClockTime(time, Modifier.weight(1f), OniTokens.clock)
@@ -460,11 +1024,11 @@ internal class WidgetState {
 @Composable private fun SongWidget(state: WidgetState, live: Boolean) {
     val data = state.frame
     val title = data.optString("title").ifBlank { when (data.optString("scene")) {
-        "List" -> tr("곡 선택", "选择歌曲")
-        "Result" -> tr("플레이 결과", "游玩结果")
-        else -> tr("곡 시작 대기", "等待歌曲开始")
+        "List" -> str(Msg.WIDGET_SONG_SELECTING)
+        "Result" -> str(Msg.WIDGET_SONG_RESULT)
+        else -> str(Msg.WIDGET_SONG_WAITING)
     } }
-    val artist = data.optString("artist").ifBlank { tr("게임에서 곡을 선택해 주세요", "请在游戏中选择歌曲") }
+    val artist = data.optString("artist").ifBlank { str(Msg.WIDGET_SONG_HINT) }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(OniTokens.space)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(OniTokens.gap)) {
             Artwork(state.cover, Modifier.size(48.dp))
@@ -486,7 +1050,7 @@ internal class WidgetState {
 @Composable private fun Artwork(cover: ImageBitmap?, modifier: Modifier) {
     val shape = RoundedCornerShape(OniTokens.compactRadius)
     if (cover != null) {
-        Image(cover, tr("곡 앨범 이미지", "歌曲封面"), modifier.clip(shape), contentScale = ContentScale.Crop)
+        Image(cover, str(Msg.WIDGET_SONG_ARTWORK), modifier.clip(shape), contentScale = ContentScale.Crop)
         return
     }
     val night = isSystemInDarkTheme()
@@ -512,11 +1076,14 @@ internal class WidgetState {
  * Status colour for the device widget. The host reports plain text, so read the few words that
  * mean "working" or "off"; anything else (waiting, retrying, errors) is amber.
  */
-private fun connectionTone(value: String): Color {
-    val head = value.lineSequence().firstOrNull().orEmpty()
+private fun connectionTone(value: String, tone: Int): Color {
+    // The game session reports real link state; the text is read only for hosts that do not (the launcher preview).
+    when (tone) { NativeSettings.OK -> return IconTint.green; NativeSettings.WAIT -> return IconTint.orange; NativeSettings.INFO -> return Color(GameUi.MUTED) }
+    val head = value.lineSequence().firstOrNull().orEmpty().lowercase(I18n.locale())
+    fun has(id: Int) = head.contains(str(id).lowercase(I18n.locale()))
     return when {
-        head.contains("OFF") || head.contains(tr("미리보기", "预览")) || head.contains(tr("휴대폰 화면", "手机屏幕")) -> Color(GameUi.MUTED)
-        head.contains(tr("연결됨", "已连接")) || head.contains(tr("연동 중", "联动中")) || head.contains("16:9") -> IconTint.green
+        head.contains("off") || has(Msg.WIDGET_CONNECTION_MATCH_PREVIEW) || has(Msg.SETTINGS_PHONE_GROUP) -> Color(GameUi.MUTED)
+        has(Msg.WIDGET_CONNECTION_MATCH_CONNECTED) || has(Msg.WIDGET_CONNECTION_MATCH_LINKED) || head.contains("16:9") -> IconTint.green
         else -> IconTint.orange
     }
 }
@@ -530,4 +1097,4 @@ private fun rank(a: Double) = when {
 @Composable private fun Dot(color: Color) { Box(Modifier.size(OniTokens.dot).clip(CircleShape).background(color)) }
 @Composable private fun SmallMetric(label: String, value: String) { Column { Caption(label); Metric(value) } }
 
-private fun uiLocale() = if (UiText.language() == "zh-Hans") Locale.SIMPLIFIED_CHINESE else Locale.KOREAN
+private fun uiLocale() = I18n.locale()
