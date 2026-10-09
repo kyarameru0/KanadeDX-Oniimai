@@ -144,6 +144,38 @@ static constexpr uint64_t SIG_AIME_ADVCHECK = 0x3b3dd936179896c4ULL;
 static constexpr uintptr_t RVA_AIME_ANYREAD = 0x2587c38;
 static constexpr uint64_t SIG_AIME_ANYREAD = 0xc91d5c5366d1fab9ULL;
 
+static constexpr uintptr_t RVA_CAMERA_DEVICES=0x4fd48fc;
+static constexpr uint64_t SIG_CAMERA_DEVICES=0x62e847197780b266ULL;
+static constexpr uintptr_t RVA_CAMERA_UNLOCK=0x21b7228;
+static constexpr uint64_t SIG_CAMERA_UNLOCK=0x382dea5c8064d47bULL;
+static constexpr uintptr_t RVA_CAMERA_CONFIG=0x21b4810;
+static constexpr uint64_t SIG_CAMERA_CONFIG=0x5b7757f91e52ff35ULL;
+static constexpr uintptr_t RVA_CAMERA_COPY=0x25ba6f0;
+static constexpr uint64_t SIG_CAMERA_COPY=0x9ca771fca62707b9ULL;
+static constexpr uintptr_t RVA_CAMERA_TAKE=0x265d7fc;
+static constexpr uint64_t SIG_CAMERA_TAKE=0xcda2cca7b8e2b760ULL;
+static constexpr uintptr_t RVA_CAMERA_GET=0x258e660;
+static constexpr uint64_t SIG_CAMERA_GET=0x8f464a08a03564a1ULL;
+static constexpr uintptr_t RVA_CAMERA_PLAY=0x4fd4b84;
+static constexpr uint64_t SIG_CAMERA_PLAY=0xe723648b206663c6ULL;
+static constexpr uintptr_t RVA_CAMERA_ICON_DISABLED=0x261f8e4;
+static constexpr uint64_t SIG_CAMERA_ICON_DISABLED=0xef72059e44a42bd0ULL;
+static constexpr uintptr_t RVA_CAMERA_PHOTO_DISABLED=0x261f920;
+static constexpr uint64_t SIG_CAMERA_PHOTO_DISABLED=0x13cab19e59b54e3cULL;
+static constexpr uintptr_t RVA_CAMERA_CAPTURE=0x22f819c;
+static constexpr uint64_t SIG_CAMERA_CAPTURE=0x564bd678898d2b44ULL;
+static constexpr uintptr_t RVA_CAMERA_DEVELOP=0x21dd200;
+static constexpr uint64_t SIG_CAMERA_DEVELOP=0x564bd678898d2b44ULL;
+static constexpr uintptr_t RVA_CAMERA_REGION_PIXELS=0x4fe9f58;
+static constexpr uint64_t SIG_CAMERA_REGION_PIXELS=0x56fe5d99ce970356ULL;
+static constexpr uintptr_t RVA_CAMERA_VIEW=0x21d4944;
+static constexpr uint64_t SIG_CAMERA_VIEW=0xbfa204675e4e2561ULL;
+static constexpr uintptr_t RVA_CAMERA_PHOTO_FRAME=0x21d56b8;
+static constexpr uint64_t SIG_CAMERA_PHOTO_FRAME=0x5b7757f91e52ff35ULL;
+static constexpr uintptr_t RVA_CAMERA_PREVIEW=0x21d43e4;
+static constexpr uint64_t SIG_CAMERA_PREVIEW=0x98a35867e90c900fULL;
+static constexpr uintptr_t RVA_CAMERA_STOP=0x4fd4bfc;
+static constexpr uint64_t SIG_CAMERA_STOP=0x2e22ac8b4918abeeULL;
 static constexpr TargetBuild PROFILE = {
     BUILD_ID, sizeof(BUILD_ID), "KanadeDX 1.65 (260721.1649)",
     RVA_TOUCH,
@@ -265,5 +297,21 @@ static constexpr TargetBuild PROFILE = {
     SIG_AIME_ADVCHECK,
     RVA_AIME_ANYREAD,
     SIG_AIME_ANYREAD,
+    RVA_CAMERA_DEVICES, SIG_CAMERA_DEVICES,
+    RVA_CAMERA_UNLOCK, SIG_CAMERA_UNLOCK,
+    RVA_CAMERA_CONFIG, SIG_CAMERA_CONFIG,
+    RVA_CAMERA_COPY, SIG_CAMERA_COPY,
+    RVA_CAMERA_TAKE, SIG_CAMERA_TAKE,
+    RVA_CAMERA_GET, SIG_CAMERA_GET,
+    RVA_CAMERA_PLAY, SIG_CAMERA_PLAY,
+    RVA_CAMERA_ICON_DISABLED, SIG_CAMERA_ICON_DISABLED,
+    RVA_CAMERA_PHOTO_DISABLED, SIG_CAMERA_PHOTO_DISABLED,
+    RVA_CAMERA_STOP, SIG_CAMERA_STOP,
+    RVA_CAMERA_PREVIEW, SIG_CAMERA_PREVIEW,
+    RVA_CAMERA_PHOTO_FRAME, SIG_CAMERA_PHOTO_FRAME,
+    RVA_CAMERA_VIEW, SIG_CAMERA_VIEW,
+    RVA_CAMERA_CAPTURE, SIG_CAMERA_CAPTURE,
+    RVA_CAMERA_DEVELOP, SIG_CAMERA_DEVELOP,
+    RVA_CAMERA_REGION_PIXELS, SIG_CAMERA_REGION_PIXELS,
 };
 }

@@ -1,5 +1,83 @@
 # Changelog
 
+## 1.3.38 — 2026-10-09
+
+- Add a horizontal-mirroring switch under Labs → Game camera, saved separately for front and rear cameras. Defaults retain front mirroring ON and rear mirroring OFF.
+- Apply the selected orientation consistently to live previews, profile-photo crops and song-result memorial photos. Changes apply on game restart to avoid altering a frozen photograph halfway through confirmation.
+- Add Korean, English and Simplified Chinese labels and restart guidance. Pass 3,079 localization checks and 924 native regression checks.
+
+## 1.3.37 — 2026-10-09
+
+- Mirror newly captured front-camera memorial photos before the game publishes the result/JPEG buffer. Song-result photos now use the same facing as the profile-photo preview; rear-camera photos retain their existing orientation.
+- Keep profile cropping and frame compositing unchanged. Apply the correction once to each fresh capture, without flipping the result UI or modifying existing saved photos.
+- Pass 924 native regression checks, including asymmetric preview/result pixels, repeated captures, odd/even widths and invalid buffers. Physical verification of a newly captured song-result photo is pending.
+
+## 1.3.36 — 2026-10-09
+
+- Correct the separate final profile-photo capture paths in both SimpleSettingProcess and PhotoShootProcess. They previously bypassed the centered preview and cropped at the cabinet P1/P2 quarter-width positions.
+- Scope the replacement crop coordinates to the selected camera texture during the original capture call. Preview, adjustment and final save now use the same clamped rectangle; the game retains frame compositing, resizing, consent and saving.
+- Verify 72 function fingerprints against both original builds and pass 897 native regression checks. APK compilation, signing, alignment and package audit pass. Installed on the 1.65 test phone; final saved-profile verification is pending.
+
+## 1.3.35 — 2026-10-09
+
+- Keep the profile-photo preview, post-shot adjustment texture and final frame-composited crop in the same orientation. Front-camera photos now retain the mirrored preview instead of flipping after the shot; rear-camera photos remain unmirrored.
+- Use the same crop coordinates for the displayed texture and final pixel buffer. Add asymmetric pixel regressions for centered and adjusted front/rear crops (875 native checks pass).
+- Preserve the confirmed centered white guide and black-bar fix from 1.3.33/1.3.34. Live post-shot orientation verification is in progress.
+
+## 1.3.34 — 2026-10-09
+
+- Gate the photo preview shutter layers with the original shooting state. They remain hidden during idle framing and use the original game animation during a shot. Keep the central white guide and bounded crop preview from 1.3.33.
+- Verify the additional photo ViewUpdate hook against both original builds (69 function fingerprints). APK checks and 868 native regression checks pass. Live 1.65 screenshots and the user confirmed that the black side bars were gone.
+
+## 1.3.33 — 2026-10-09
+
+- Correct the separate white guide sprite, which retained the original P1 position even after the decorative photo frame was centered. Align the guide and frame overlay to the same selected region.
+- Draw the right photo preview as a bounded square with cropped UV coordinates, avoiding an oversized quad clipped by the cabinet mask. Keep later crop adjustments consistent with the full preview and final pixel crop.
+- Preserve valid default crop dimensions while the frame texture is still being initialized.
+- Build, signature/alignment checks and 868 native regression checks pass. Live 1.65 verification confirmed the centered white guide, but the right preview still had black side bars. Shutter-layer handling is addressed in 1.3.34.
+
+## 1.3.31 — 2026-10-09
+
+- Center the photo-selection frame for the phone camera instead of the original two-player quarter-width crop. Keep the full preview on the left and the matching cropped preview on the right. Populate the final photo crop from the same normalized pixels and preserve later adjustment controls.
+- Add a saved front/rear camera selector under Labs → Game camera, with front as the default. A lens change applies after restarting KanadeDX; the adapter never silently falls back to the other lens. Rear-camera previews are not mirrored.
+- Verify 68 function fingerprints against both original builds and test centered crops, adjustment bounds and invalid buffers. Physical-device checks of the new layout and rear camera are in progress.
+
+## 1.3.30 — 2026-10-09
+
+- Work around the missing Unity video-decoding shaders observed on the connected 1.65 phone. Add a CPU-readable YUV output to the game's existing Camera2 session and convert those frames to RGB without opening another camera or relying on the missing shader.
+- Adapt the game's separate profile-photo preview path, which bypasses the camera manager/photo-buffer hooks. Read the array actually returned by Unity, normalize sensor rotation and crop into the existing 1280×960 buffers, then update the game's normal and mirrored preview textures. Preserve the original framing, countdown and photo consent UI.
+- Reuse the raw camera pixel buffer between preview frames to avoid allocating a new full-resolution array every update. Diagnostic logs include frame dimensions/orientation and upload status, never pixels or images.
+- Verify the additional preview hook against both 1.60 and 1.65. The user confirmed visible live front-camera video on the connected 1.65 device; its original off-center framing is addressed in 1.3.31.
+
+## 1.3.29 — 2026-10-09
+
+- Correct the camera feature to unlock the **Take photo** and **Memorial photo** rows (1 and 3) in the game's settings. Hook the shared local photo-disable checks used by both row display and touch input, without changing either saved photo selection or photo consent.
+- Remove the module's forced `skipPhotoCamera=true` scope. With Labs enabled, Camera permission granted and KanadeDX's **SkipPhotoCamera OFF**, run the real preflight against the front camera. Clear the startup dummy flag before that check; retain timeout/failure handling instead of reporting a failed camera as ready. Explicit SkipPhotoCamera ON is respected and explained in Labs.
+- Only unlock the two local setting gates after the camera preflight succeeds. This does not add server photo support or fabricate an upload result. Add Korean, English and Simplified Chinese setup guidance.
+- Verify the added hook targets against both original 1.60 and 1.65 builds. Physical-device camera preview, setting interaction and capture still require testing.
+
+## 1.3.28 — 2026-10-09
+
+- Add a **Labs · Test features** settings tab and move the experimental camera control out of Display settings. Initial hardware setup continues to show only the four regular categories.
+- Rename the switch to **Allow game camera** and explain ON/OFF: enable the existing front-camera override of KanadeDX's in-memory camera-disable flag, or stop the override. Restart KanadeDX after changing it; the game app still needs Android Camera permission.
+- Keep the existing saved camera choice, default OFF, and remember the Labs tab across settings sessions. Add matching Korean, English and Simplified Chinese labels. Camera capture remains unverified on physical devices.
+
+## 1.3.27 — 2026-10-09
+
+- Add an experimental, opt-in phone front-camera adapter under in-game Oniimai settings → Display → Game camera. Android CAMERA permission must be granted to the game package; permission prompts only follow a user action.
+- Select a single front-facing Unity camera to satisfy the original game's one-camera limit. Avoid the Android port's redundant preflight open/close, while retaining the real game's camera initialization and photo consent.
+- Convert captured frames to the game's 1280×960 buffer with sensor rotation, vertical-flip correction and aspect-preserving center crop. Invalid frames do not mark a game photo as successful.
+- Check camera function fingerprints for both supported 1.60 and 1.65 builds. Keep the adapter disabled when its runtime metadata cannot be verified.
+- Preserve the 1.3.26 gameplay shortcut visibility change. Camera capture, preview orientation and photo results still require physical-device testing; see `docs/FRONT_CAMERA.md`.
+
+## 1.3.26 — 2026-10-09
+
+- Hide the draggable Oniimai settings shortcut while a song is playing, including the transition into
+  Results. Show it again on Results or when an unfinished song returns to the menu. Visibility follows
+  the verified game process lifecycle, so the shortcut is hidden before the first score update and does
+  not stay hidden just because the dashboard retains the final score. The external-display dashboard
+  keeps its existing Settings entry; unavailable game statistics leave the phone shortcut accessible.
+
 ## 1.3.25 — 2026-10-05
 
 - The dashboard's bottom buttons keep one height and centred labels when a label is long (English "Use phone

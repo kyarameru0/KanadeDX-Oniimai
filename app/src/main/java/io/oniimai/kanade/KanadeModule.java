@@ -36,6 +36,7 @@ public final class KanadeModule extends XposedModule {
                 });
             }
             Class<?> activity=param.getClassLoader().loadClass("com.unity3d.player.UnityPlayerActivity");
+            if(nativeLoaded)installCameraFrames(param.getClassLoader());
             try{
                 // ReaderMode supplies its own callback. The separate legacy Beam
                 // callback on Activity resume requires the game's missing NFC
@@ -84,5 +85,39 @@ public final class KanadeModule extends XposedModule {
         }catch(Throwable e){log(Log.ERROR,"OniimaiKanade","Could not install activity hooks",e);}
     }
     private boolean matches(Object activity){return session!=null&&session.activity==activity;}
+    private void installCameraFrames(ClassLoader loader){
+        try{
+            Class<?> wrapper=loader.loadClass("com.unity3d.player.Camera2Wrapper");
+            Method size=wrapper.getDeclaredMethod("getFrameSizeCamera2");size.setAccessible(true);
+            Method start=wrapper.getDeclaredMethod("startCamera2"),close=wrapper.getDeclaredMethod("closeCamera2");
+            Method create=Class.forName("android.hardware.camera2.impl.CameraDeviceImpl").getDeclaredMethod("createCaptureSession",java.util.List.class,android.hardware.camera2.CameraCaptureSession.StateCallback.class,android.os.Handler.class);
+            Method add=android.hardware.camera2.CaptureRequest.Builder.class.getDeclaredMethod("addTarget",android.view.Surface.class);
+            hook(create).intercept(chain->{
+                CameraFrameSource source=CameraFrameSource.STARTING.get();
+                if(source==null)return chain.proceed();
+                java.util.List<?> original=(java.util.List<?>)chain.getArg(0);
+                if(original==null||original.size()!=1||!(original.get(0) instanceof android.view.Surface))return chain.proceed();
+                android.view.Surface surface=(android.view.Surface)original.get(0);
+                CameraFrameSource.associate(surface,source);
+                java.util.ArrayList<android.view.Surface> outputs=new java.util.ArrayList<>();outputs.add(surface);outputs.add(source.output);
+                return chain.proceed(new Object[]{outputs,chain.getArg(1),chain.getArg(2)});
+            });
+            hook(add).intercept(chain->{
+                Object result=chain.proceed();
+                android.view.Surface extra=CameraFrameSource.extraTarget((android.view.Surface)chain.getArg(0));
+                if(extra!=null)chain.proceed(new Object[]{extra});
+                return result;
+            });
+            hook(start).intercept(chain->{
+                CameraFrameSource source=null;
+                try{source=CameraFrameSource.start(chain.getThisObject(),(android.graphics.Rect)size.invoke(chain.getThisObject()));}
+                catch(ReflectiveOperationException|RuntimeException failure){log(Log.WARN,"OniimaiKanade","Camera CPU output unavailable: "+failure.getClass().getSimpleName());}
+                CameraFrameSource previous=CameraFrameSource.STARTING.get();CameraFrameSource.STARTING.set(source);
+                try{return chain.proceed();}finally{CameraFrameSource.STARTING.set(previous);}
+            });
+            hook(close).intercept(chain->{try{return chain.proceed();}finally{CameraFrameSource.stop(chain.getThisObject());}});
+            log(Log.INFO,"OniimaiKanade","Front camera CPU-output hooks installed");
+        }catch(ReflectiveOperationException|RuntimeException failure){log(Log.WARN,"OniimaiKanade","Camera CPU-output hooks unavailable: "+failure.getClass().getSimpleName());}
+    }
     @Override public boolean onHotReloading(HotReloadingParam param){return false;}
 }

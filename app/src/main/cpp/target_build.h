@@ -127,6 +127,38 @@ struct TargetBuild {
     uint64_t SIG_AIME_ADVCHECK;
     uintptr_t RVA_AIME_ANYREAD;
     uint64_t SIG_AIME_ANYREAD;
+    uintptr_t RVA_CAMERA_DEVICES;
+    uint64_t SIG_CAMERA_DEVICES;
+    uintptr_t RVA_CAMERA_UNLOCK;
+    uint64_t SIG_CAMERA_UNLOCK;
+    uintptr_t RVA_CAMERA_CONFIG;
+    uint64_t SIG_CAMERA_CONFIG;
+    uintptr_t RVA_CAMERA_COPY;
+    uint64_t SIG_CAMERA_COPY;
+    uintptr_t RVA_CAMERA_TAKE;
+    uint64_t SIG_CAMERA_TAKE;
+    uintptr_t RVA_CAMERA_GET;
+    uint64_t SIG_CAMERA_GET;
+    uintptr_t RVA_CAMERA_PLAY;
+    uint64_t SIG_CAMERA_PLAY;
+    uintptr_t RVA_CAMERA_ICON_DISABLED;
+    uint64_t SIG_CAMERA_ICON_DISABLED;
+    uintptr_t RVA_CAMERA_PHOTO_DISABLED;
+    uint64_t SIG_CAMERA_PHOTO_DISABLED;
+    uintptr_t RVA_CAMERA_STOP;
+    uint64_t SIG_CAMERA_STOP;
+    uintptr_t RVA_CAMERA_PREVIEW;
+    uint64_t SIG_CAMERA_PREVIEW;
+    uintptr_t RVA_CAMERA_PHOTO_FRAME;
+    uint64_t SIG_CAMERA_PHOTO_FRAME;
+    uintptr_t RVA_CAMERA_VIEW;
+    uint64_t SIG_CAMERA_VIEW;
+    uintptr_t RVA_CAMERA_CAPTURE;
+    uint64_t SIG_CAMERA_CAPTURE;
+    uintptr_t RVA_CAMERA_DEVELOP;
+    uint64_t SIG_CAMERA_DEVELOP;
+    uintptr_t RVA_CAMERA_REGION_PIXELS;
+    uint64_t SIG_CAMERA_REGION_PIXELS;
 };
 #include "target_160.h"
 #include "target_165.h"

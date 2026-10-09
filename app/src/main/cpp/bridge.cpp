@@ -105,6 +105,7 @@ static uint64_t nowMs(){timespec t{};clock_gettime(CLOCK_MONOTONIC,&t);return ui
 #include "game_ui.h"
 #include "game_aime.h"
 #include "game_ceiling.h"
+#include "game_camera.h"
 static void touchHook(void* self,int player,uint64_t real,bool updated,const void* method){
     touchReads++;
     pthread_mutex_lock(&stateLock);
@@ -117,6 +118,7 @@ static void touchHook(void* self,int player,uint64_t real,bool updated,const voi
 static void frameHook(const void* method){
     pthread_mutex_lock(&stateLock);state.frame(nowMs());pthread_mutex_unlock(&stateLock);frames++;
     originalFrame(method);
+    GameCamera::poll();
     pthread_mutex_lock(&stateLock);displayFrames.game();pthread_mutex_unlock(&stateLock);
 }
 static bool rawHook(void* self,int id,const void* method){
@@ -168,7 +170,7 @@ static void install(void* handle){
     }
     int count=0;
     for(;count<4;count++)if(hookFunction(reinterpret_cast<void*>(base+offsets[count]),replacements[count],backups[count])!=0)break;
-    if(count==4){status=15;installLeds(base);GameCeiling::install(base);GameplayStats::install(base,handle);GameUi::install(base,handle);BootInput::install(base);GameAime::install(base,handle);__android_log_print(ANDROID_LOG_INFO,"OniimaiKanade","Verified build; 4 input hooks installed");}
+    if(count==4){status=15;installLeds(base);GameCeiling::install(base);GameplayStats::install(base,handle);GameUi::install(base,handle);BootInput::install(base);GameAime::install(base,handle);GameCamera::install(base,handle);__android_log_print(ANDROID_LOG_INFO,"OniimaiKanade","Verified build; 4 input hooks installed");}
     else{
         // Leave any hook whose rollback fails inert, and never arm this generation.
         for(int i=count-1;i>=0;i--)unhookFunction(reinterpret_cast<void*>(base+offsets[i]));

@@ -112,7 +112,9 @@ import java.util.Locale
                                         listState: @Composable (Int) -> LazyListState = { rememberLazyListState() }, general: Boolean = true,
                                         onAbout: (() -> Unit)? = null) {
     Page(str(Msg.SETTINGS_TITLE), back = close) {
-        TabRow(listOf(str(Msg.SETTINGS_TAB_CONNECTION), str(Msg.COMMON_DISPLAY), str(Msg.SETTINGS_TAB_BUTTONS), "LED"), tab,
+        val tabs = listOf(str(Msg.SETTINGS_TAB_CONNECTION), str(Msg.COMMON_DISPLAY), str(Msg.SETTINGS_TAB_BUTTONS), "LED") +
+            if (general) listOf(str(Msg.LABS_TAB)) else emptyList()
+        TabRow(tabs, tab,
             modifier = Modifier.padding(horizontal = OniTokens.inset), height = OniTokens.target, onTabSelected = onTab)
         // The tab on screen always reads the newest groups (states and switches change while it is open); a
         // tab sliding out keeps the groups it last showed, so it does not show the next tab's while it leaves.

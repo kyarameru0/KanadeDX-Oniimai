@@ -1,6 +1,15 @@
 package io.oniimai.kanade;
 final class NativeBridge {
     static native int initialize();
+    /** Publish intent/OS permission only. Unity objects are never read on this JNI thread. */
+    static native void cameraAuthorization(boolean wanted,boolean permission,boolean foreground,boolean rear,boolean mirror);
+    static native int cameraStatus();
+    static native boolean cameraFrameAllowed();
+    static native long cameraFrameStart();
+    static native void cameraFrameEnd(long token);
+    static native boolean cameraFrameYuv(long token,int width,int height,
+        java.nio.ByteBuffer y,int yRow,int yPixel,java.nio.ByteBuffer u,int uRow,int uPixel,
+        java.nio.ByteBuffer v,int vRow,int vPixel);
     static native void submit(long touch,int buttons,int player,boolean active);
     static native long[] stats();
     /** [phase, monotonic update count]; no Unity object access on the JNI thread. */

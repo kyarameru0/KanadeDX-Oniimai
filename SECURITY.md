@@ -4,6 +4,8 @@ Do not attach card numbers, UIDs, raw NFC blocks, credentials, signing keys or g
 
 Card results are delivered to the current game session. Module diagnostics do not record their identities or access codes. The game's own account and network behavior remains governed by the game. Running inside its process does not provide isolation from that process.
 
+The experimental phone-camera adapter is OFF by default and requires Camera permission for the game package. It supplies frames to the game's existing photo flow; module diagnostics do not log pixels or images. The game controls consent, capture, saving and any upload to its configured service. Enabling the adapter does not make that service trustworthy. Avoid posting personal photographs or unredacted screenshots in diagnostic reports. See [camera behavior and limits](docs/FRONT_CAMERA.md).
+
 The phone NFC service checks Binder caller UIDs against an installed-package allowlist. This is package-name-based validation, not authentication of the original game developer's signing certificate. Do not install an untrusted game with the same package name. Compatibility fingerprints are also not a security boundary.
 
 Use GitHub's private vulnerability-reporting route if enabled. Otherwise, request a private contact route from the repository owner without posting sensitive details. No independent security audit has been completed.

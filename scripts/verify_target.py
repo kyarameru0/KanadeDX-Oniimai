@@ -17,7 +17,7 @@ import zipfile
 
 IL2CPP_MEMBER = "lib/arm64-v8a/libil2cpp.so"
 METADATA_MEMBER = "assets/bin/Data/Managed/Metadata/global-metadata.dat"
-EXPECTED_FUNCTION_COUNT = 56
+EXPECTED_FUNCTION_COUNT = 72
 
 
 def require(condition, message):
@@ -143,9 +143,9 @@ def verify(apk, root):
     header = header_path.read_text(encoding="utf-8")
     rvas, signatures, header_id = parse_header(header)
     declared = {}
-    for group in ("hooks", "led_hooks", "stats_functions", "ui_functions", "boot_functions", "album_functions", "aime_functions"):
+    for group in ("hooks", "led_hooks", "stats_functions", "ui_functions", "boot_functions", "album_functions", "aime_functions", "camera_functions"):
         for key, address in target[group].items():
-            name = ("LED_" if group == "led_hooks" else "UI_" if group == "ui_functions" else "BOOT_" if group == "boot_functions" else "ALBUM_" if group == "album_functions" else "AIME_" if group == "aime_functions" else "") + key.upper()
+            name = ("LED_" if group == "led_hooks" else "UI_" if group == "ui_functions" else "BOOT_" if group == "boot_functions" else "ALBUM_" if group == "album_functions" else "AIME_" if group == "aime_functions" else "CAMERA_" if group == "camera_functions" else "") + key.upper()
             require(name not in declared, f"Duplicate target manifest RVA: {name}")
             declared[name] = int(address, 16)
     require(declared == rvas, "Target manifest RVAs differ from profile header")

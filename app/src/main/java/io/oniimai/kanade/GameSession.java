@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 final class GameSession implements DashboardHost, SetupProbe {
     final Activity activity;
@@ -56,6 +58,7 @@ final class GameSession implements DashboardHost, SetupProbe {
     private final CeilingOutput ceilingOutput;
     private final AimeReader aimeReader;
     private final PhoneNfcReader phoneNfc;
+    private final FrontCamera frontCamera;
     private boolean aimeEnabled,nativeAimeAllowed;
     private String aimePort="";
     private TextView aimeChoice,aimeStatusView;
@@ -65,7 +68,7 @@ final class GameSession implements DashboardHost, SetupProbe {
     private TextView ledStatusView,ledChoice;
     private LinearLayout panelBody,tabStrip;
     private ScrollView panelScroll;
-    private final int[] tabScroll=new int[4];
+    private final int[] tabScroll=new int[5];
     private TextView screenStatus;
     private Switch externalToggle;
     private boolean syncingExternalToggle;
@@ -84,6 +87,7 @@ final class GameSession implements DashboardHost, SetupProbe {
     GameSession(Activity activity,boolean loaded){
         this.activity=activity;nativeLoaded=loaded;usb=(UsbManager)activity.getSystemService(Context.USB_SERVICE);
         prefs=activity.getSharedPreferences("oniimai_controller_v1",Context.MODE_PRIVATE);
+        frontCamera=new FrontCamera(activity,prefs,loaded);
         applyDefaults(prefs); UiLanguage.load(prefs); commandMode=prefs.getBoolean("touch_command",false);
         inputRequested=prefs.getBoolean("input_enabled",true);buttonMode=bounded(prefs.getInt("button_mode",2),0,2);GameAssets.bind(assetContext());
         ledOutput=new LedOutput(usb,loaded,lobbyLights,setupLights);ledEnabled=prefs.getBoolean("led_enabled",true);
@@ -98,7 +102,7 @@ final class GameSession implements DashboardHost, SetupProbe {
         ledReverse=prefs.getBoolean("led_reverse",false);ledRing=prefs.getBoolean("led_ring",false);applyLedSettings();
         for(int i=0;i<keys.map.length;i++)keys.map[i]=prefs.getInt("key"+i,keys.map[i]);
         player=prefs.getInt("player",0)==1?1:0;
-        panelTab=bounded(prefs.getInt("settings_tab",0),0,3);
+        panelTab=bounded(prefs.getInt("settings_tab",0),0,4);
         for(int i=0;i<tabScroll.length;i++)tabScroll[i]=Math.max(0,prefs.getInt("settings_scroll_"+i,0));
         IntentFilter filter=new IntentFilter(permissionAction);filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
         if(Build.VERSION.SDK_INT>=33)activity.registerReceiver(receiver,filter,Context.RECEIVER_NOT_EXPORTED);else activity.registerReceiver(receiver,filter);
@@ -290,7 +294,23 @@ final class GameSession implements DashboardHost, SetupProbe {
         // Measure the translated label itself; a fixed width clips longer languages.
         overlay.addView(settingsButton,new FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.START));
         FloatingShortcut.attach(settingsButton,prefs,"settingsShortcut",16);
-        settingsButton.setVisibility(externalActive()?View.GONE:View.VISIBLE);
+        updateSettingsButtonVisibility();
+    }
+    private void updateSettingsButtonVisibility(){
+        boolean playing=false;
+        if(nativeLoaded&&nativeStatus==15&&gameFrame!=null){
+            try{
+                JSONObject frame=new JSONObject(gameFrame);
+                String scene=frame.optString("scene");
+                // "game" means a score snapshot is available: it is initially false during play
+                // and stays true on Results. Use the verified process lifecycle instead.
+                // Loading here is the finished-song transition into Results, not game startup.
+                playing=frame.optInt("status")==511&&!frame.optBoolean("result")
+                    &&("Game".equals(scene)||"Loading".equals(scene));
+            }catch(JSONException ignored){/* Keep Settings reachable if statistics are unavailable. */}
+        }
+        int visibility=externalActive()||playing?View.GONE:View.VISIBLE;
+        if(settingsButton!=null&&settingsButton.getVisibility()!=visibility)settingsButton.setVisibility(visibility);
     }
     boolean portraitLocked(){return displayOutput!=null&&displayOutput.portraitLocked();}
     private void toggleArm(){
@@ -303,8 +323,8 @@ final class GameSession implements DashboardHost, SetupProbe {
     void suspendInput(){suspendInput(true);}
     private void suspendInput(boolean suspendCard){neutralSince=0;armed=false;if(suspendCard)allowAime(false);push();}
     void focusLost(){setupGate.reset();focus=false;suspendInput();keys.clear();synchronized(dataLock){keyButtons=0;}push();}
-    void pause(){clearSetupNotice();setupGate.reset();phoneNfc.pause();if(displayOutput!=null)displayOutput.pause();foreground=false;ledOutput.foreground(false);ceilingOutput.foreground(false);aimeReader.foreground(false);suspendInput();keys.clear();learn=-1;synchronized(dataLock){keyButtons=0;}push();}
-    void resume(){foreground=true;focus=activity.hasWindowFocus();ledOutput.foreground(true);ceilingOutput.foreground(true);aimeReader.foreground(true);if(displayOutput!=null)displayOutput.resume();}
+    void pause(){frontCamera.foreground(false);clearSetupNotice();setupGate.reset();phoneNfc.pause();if(displayOutput!=null)displayOutput.pause();foreground=false;ledOutput.foreground(false);ceilingOutput.foreground(false);aimeReader.foreground(false);suspendInput();keys.clear();learn=-1;synchronized(dataLock){keyButtons=0;}push();}
+    void resume(){frontCamera.foreground(true);foreground=true;focus=activity.hasWindowFocus();ledOutput.foreground(true);ceilingOutput.foreground(true);aimeReader.foreground(true);if(displayOutput!=null)displayOutput.resume();}
     boolean motion(MotionEvent event){return guard.captures(event);}
     boolean key(KeyEvent event){
         if(event.getKeyCode()==KeyEvent.KEYCODE_BACK&&!guard.captures(event)&&externalActive()){
@@ -353,7 +373,7 @@ final class GameSession implements DashboardHost, SetupProbe {
         allowAime(((aimeEnabled&&aimeReader.running()&&inputRequested)||phoneEnabled)&&foreground&&focus&&!initializing&&!uiBlocked()&&nativeStatus==15);
         phoneNfc.update(phoneEnabled&&nativeAimeAllowed,now);
         if(now-lastGameFrame>=150){lastGameFrame=now;if(nativeLoaded&&nativeStatus==15)gameFrame=NativeBridge.gameplayStats();
-            boolean external=externalActive();settingsButton.setVisibility(external?View.GONE:View.VISIBLE);
+            boolean external=externalActive();updateSettingsButtonVisibility();
             returnButton.setVisibility(!external&&displayOutput.hasExternal()?View.VISIBLE:View.GONE);
         }
         if(now-lastScan>=(setupSearching?2000:4000)&&foreground&&(setupSearching||!setupActive&&!initializing&&prefs.getBoolean("auto_connect",true))&&!busy){
@@ -368,6 +388,7 @@ final class GameSession implements DashboardHost, SetupProbe {
         }
 
         if(nativeLoaded&&now-lastProbe>1000){lastProbe=now;int before=nativeStatus;nativeStatus=NativeBridge.initialize();nativeProbed=true;
+            frontCamera.publish();
             if(before!=15&&nativeStatus==15&&displayOutput!=null)displayOutput.gameReady();
             if(displayOutput!=null)displayOutput.observeFrames();long[] stats=NativeBridge.stats();if(stats!=null){lastStatsFrame=stats[1];lastStatsTouch=stats[2];}}
         if(now-lastSetupCheck>=250){lastSetupCheck=now;advanceInitialization();}
@@ -451,11 +472,13 @@ final class GameSession implements DashboardHost, SetupProbe {
     private boolean forSetup;
     List<NativeSettings.Group> nativeSettings(int tab){
         buildingSettings=new ArrayList<>();
-        if(tab==0)renderConnectionTab();else if(tab==1)renderDisplayTab();else if(tab==2)renderButtonTab();else renderLedTab();
+        // Test features are intentionally outside first-run hardware setup.
+        tab=bounded(tab,0,forSetup?3:4);
+        if(tab==0)renderConnectionTab();else if(tab==1)renderDisplayTab();else if(tab==2)renderButtonTab();else if(tab==3)renderLedTab();else renderLabsTab();
         return buildingSettings;
     }
     int settingsTab(){return panelTab;}
-    void settingsTab(int tab){panelTab=tab;learn=-1;prefs.edit().putInt("settings_tab",tab).apply();}
+    void settingsTab(int tab){panelTab=bounded(tab,0,4);learn=-1;prefs.edit().putInt("settings_tab",panelTab).apply();}
     void chooseLanguage(){UiLanguage.choose(activity,prefs,this::protect,this::languageChanged);}
     void showLicenses(){LicenseUi.show(activity,this::protect);}
     void showAbout(){String game=gameVersion();NativeUi.about(activity,()->NativeUi.aboutInfo(activity,game,nativeExplanation(),firmwareDescription()),this::protect,this::queryFirmware,this::copyDiagnostics);}
@@ -531,6 +554,20 @@ final class GameSession implements DashboardHost, SetupProbe {
         help.note(I18n.t(Msg.SETTINGS_DISPLAY_NOTE_ROTATION));
         help.note(I18n.t(Msg.SETTINGS_DISPLAY_NOTE_CONNECTION));
         help.row(I18n.t(Msg.SETTINGS_DISPLAY_COPY_DIAGNOSTICS),I18n.t(Msg.SETTINGS_DISPLAY_DIAGNOSTICS_SUMMARY),this::copyDiagnostics);
+    }
+    private void renderLabsTab(){
+        NativeSettings.Group introduction=settingsGroup(I18n.t(Msg.LABS_TITLE));
+        introduction.note(I18n.t(Msg.LABS_SUMMARY));
+        NativeSettings.Group camera=settingsGroup(I18n.t(Msg.CAMERA_GROUP));
+        camera.status(frontCamera.summary(),NativeSettings.INFO);
+        camera.toggle(I18n.t(Msg.CAMERA_TOGGLE),I18n.t(Msg.CAMERA_SUMMARY),frontCamera.enabled(),value->{frontCamera.enable(value);renderTab();});
+        String[] lenses={I18n.t(Msg.CAMERA_LENS_FRONT),I18n.t(Msg.CAMERA_LENS_REAR)};
+        camera.row(I18n.t(Msg.CAMERA_LENS),lenses[frontCamera.rear()?1:0],()->
+            choose(I18n.t(Msg.CAMERA_LENS),lenses,frontCamera.rear()?1:0,n->{frontCamera.rear(n==1);renderTab();}));
+        camera.toggle(I18n.t(Msg.CAMERA_MIRROR),I18n.t(Msg.CAMERA_MIRROR_SUMMARY),frontCamera.mirror(),value->{frontCamera.mirror(value);renderTab();});
+        camera.note(I18n.t(Msg.CAMERA_LENS_RESTART));
+        if(frontCamera.enabled()&&!frontCamera.permitted())camera.row(I18n.t(Msg.CAMERA_PERMISSION),I18n.t(Msg.CAMERA_PERMISSION_NEEDED),frontCamera::request);
+        camera.note(I18n.t(Msg.CAMERA_NOTE));
     }
     private boolean canChangeInput(){if(connected||busy){tell(I18n.t(Msg.SETTINGS_DISCONNECT_FIRST));return false;}return true;}
     private void renderButtonTab(){
@@ -939,6 +976,7 @@ final class GameSession implements DashboardHost, SetupProbe {
     void afterActivityDestroyed(){if(displayOutput!=null)displayOutput.releaseAfterUnity();}
     void destroy(){
         if(destroyed)return;clearSetupNotice();destroyed=true;armed=false;allowAime(false);generation.incrementAndGet();push();ui.removeCallbacks(tick);
+        frontCamera.foreground(false);
         phoneNfc.destroy();gameAlbum.close();
         if(displayOutput!=null)displayOutput.destroy();
         ledOutput.destroy();

@@ -8,15 +8,15 @@
   </picture>
   <h1>KanadeDX Oniimai</h1>
   <p>An unofficial, independently developed LSPosed module connecting an Oniimai mini controller to KanadeDX on Android.</p>
-  <p><strong>1.3.25</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
+  <p><strong>1.3.38</strong> · LSPosed module · Android 9+ · ARM64 · libxposed API 102</p>
   <p><a href="#quick-start">Install</a> · <a href="docs/USER_GUIDE.md">Use</a> · <a href="docs/DEVELOPER_GUIDE.md">Understand the code</a> · <a href="docs/BUILD.md">Build</a> · <a href="docs/README.md">All documentation</a></p>
 </div>
 
-**The current [1.3.25 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.3.25) supports KanadeDX-260721.1649 (1.65) and KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [validation and update notes](docs/COMPATIBILITY-1.65.md). The historical **1.0.0 APK supports 1.60 only**.
+**The current [1.3.38 release](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.3.38) supports KanadeDX-260721.1649 (1.65) and KanadeDX-260207.0635 (1.60).** Compatibility uses these exact native builds, not a version-name guess. See [validation and update notes](docs/COMPATIBILITY-1.65.md). The historical **1.0.0 APK supports 1.60 only**.
 
 **This project contains AI-generated and AI-assisted code, tests and documentation.** OpenAI Codex was used for development, review and release preparation; the maintainer also supplied revised source and device feedback. Third-party code retains its own authorship and licenses. [AI disclosure](AI_DISCLOSURE.md)
 
-> **v1.3.25 · Standalone LSPosed module.** Guided controller setup, display-startup safeguards, cabinet welcome screen and responsive dashboard actions. [UI previews](docs/UI-PREVIEWS.md). [Release notes](docs/RELEASE-1.3.25.md). The release contains the module APK, module source and dependency sources. The game, songs, artwork, controller firmware and integrated game APKs are not included.
+> **v1.3.38 · Standalone LSPosed module.** Experimental phone-camera support with front/rear selection, centered photo framing and per-lens mirroring. The floating settings shortcut hides during songs and returns on Results. [Camera setup and limits](docs/FRONT_CAMERA.md). [Release notes](docs/RELEASE-1.3.38.md). The release contains the module APK, module source and dependency sources. The game, songs, artwork, controller firmware and integrated game APKs are not included.
 
 <details>
 <summary>Contents</summary>
@@ -41,6 +41,7 @@
 | External display | A portrait game rotated 90°/270° on a landscape monitor, with phone/external switching |
 | Phone dashboard | Configurable song, score, judgment, sensor and device widgets; results retained until leaving the result screen |
 | Settings | Kotlin · Jetpack Compose · Miuix UI, guided setup, grouped controls, English, Korean and Simplified Chinese app languages |
+| Experimental camera | Opt-in Labs controls for the game's photo features, front/rear lens selection and saved horizontal mirroring; centered preview and capture |
 
 Output refresh rate depends on the modes exposed by the phone, adapter, cable and monitor. Consistent frame delivery is not guaranteed on every setup. Phone MIFARE Classic reading requires compatible NFC hardware.
 
@@ -51,7 +52,7 @@ Output refresh rate depends on the modes exposed by the phone, adapter, cable an
 
 You need an Android 9+ ARM64 device, an LSPosed environment supporting **modern API 102 and native hooks**, your copy of the supported game, and an Oniimai controller with USB OTG.
 
-1. Install `Oniimai-Kanade-API102-1.3.25.apk` from [Releases](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.3.25).
+1. Install `Oniimai-Kanade-API102-1.3.38.apk` from [Releases](https://github.com/kyarameru0/KanadeDX-Oniimai/releases/tag/v1.3.38).
 2. Enable the module in LSPosed and select **KanadeDX (`app.KanadeDX`)** as its scope.
 3. Fully stop and restart the game process.
 4. Follow first-run setup: choose a language, connect the controller and grant USB permission when asked, pick the built-in screen orientation, then check buttons, touch and lighting. Touch and command ports have different roles.
@@ -94,6 +95,7 @@ Blocking I/O stays on workers. Input snapshots cross JNI into game hooks. Extern
 | [Source provenance](docs/PROVENANCE.md) | Local implementation, actual third-party code and controller references |
 | [Controller protocol](docs/CONTROLLER_PROTOCOL.md) | Port roles, sensors and lighting transport |
 | [Card protocol](docs/AIME_PROTOCOL.md) / [Phone NFC](docs/PHONE_NFC.md) | Read flow, lifecycle and format limits |
+| [Experimental phone camera](docs/FRONT_CAMERA.md) | Opt-in setup, permission and frame flow, crop/mirror handling and device-test limits |
 | [Validation](docs/VALIDATION.md) | Automated checks versus physical-device observations |
 
 Most implementation code lives in `app/src/main/java/io/oniimai/kanade/` and `app/src/main/cpp/`. Building the module and running host tests do not require a game APK. The [documentation index](docs/README.md) groups the remaining references by task.
@@ -101,7 +103,7 @@ Most implementation code lives in `app/src/main/java/io/oniimai/kanade/` and `ap
 <a id="validation"></a>
 ## Validation
 
-For the 1.3.25 build checks and revised UI testing limits, see [release validation](docs/RELEASE-1.3.25.md#validation-and-known-limits). Host and desktop Compose checks passed; this release has not received a fresh physical-device startup, rotation or gesture check.
+For the 1.3.38 checks and camera testing limits, see [release validation](docs/RELEASE-1.3.38.md#validation-and-known-limits). Live front-camera video and the centered guide/right-preview fixes were confirmed on a Xiaomi Android 16 phone running 1.65. The latest per-lens mirroring changes, rear camera and NPatch camera operation still need physical-device verification. This release does not establish a fix for every display startup or rotation crash.
 
 On a rooted Xiaomi Android 16 phone, rc5 delivered phone-NFC results inside a patched 1.60 host, and the tester confirmed recognition. Separate 1.65 hook/input/card observations and the remaining hardware limits are recorded in [current validation](docs/COMPATIBILITY-1.65.md#verification). Independent non-root-device validation and long-duration USB stability are not established. [Historical 1.0.0 validation](docs/VALIDATION.md)
 

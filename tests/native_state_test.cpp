@@ -10,6 +10,9 @@
 #include "../app/src/main/cpp/game_aime_led_state.h"
 #include "../app/src/main/cpp/game_aime_error_state.h"
 #include "../app/src/main/cpp/arm64_stub_branch.h"
+#include "../app/src/main/cpp/camera_pixels.h"
+#include "../app/src/main/cpp/camera_policy.h"
+#include "../app/src/main/cpp/camera_yuv.h"
 #define CHECK(x) do { ++checks; if(!(x)) return -__LINE__; } while(0)
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
@@ -36,6 +39,147 @@ struct FakeUiObjects {
 };
 extern "C" EXPORT int run_tests(){
     int checks=0;InputState s;
+    // A disabled photo row must only unlock after authorized, verified startup.
+    // Regressions covered: forced SkipPhotoCamera, denial/background, timeout,
+    // and changing an unrelated original enabled setting to disabled.
+    for(unsigned auth=0;auth<8;auth++){
+        CHECK(!CameraPolicy::begin(auth,true,true));
+        CHECK(!CameraPolicy::begin(auth,false,false));
+        CHECK(CameraPolicy::begin(auth,true,false)==(auth==7));
+        CHECK(CameraPolicy::menuDisabled(true,auth,true,true)==(auth!=7));
+        CHECK(CameraPolicy::menuDisabled(true,auth,false,true));
+        CHECK(CameraPolicy::menuDisabled(true,auth,true,false));
+        CHECK(!CameraPolicy::menuDisabled(false,auth,false,false));
+    }
+    // Runtime opt-out/revocation immediately stops overriding either local gate.
+    CHECK(!CameraPolicy::menuDisabled(true,7,true,true));
+    CHECK(CameraPolicy::menuDisabled(true,6,true,true));
+    CHECK(CameraPolicy::menuDisabled(true,5,true,true));
+    CHECK(CameraPolicy::menuDisabled(true,3,true,true));
+    // Asymmetric bottom-up frame: detects clockwise vs counterclockwise mistakes
+    // and the order of sensor-mirroring vs rotation, without any camera hardware.
+    uint32_t cameraSource[6]={1,2,3,4,5,6},cameraDest[6]={};
+    CHECK(CameraPixels::copy(cameraSource,3,2,6,cameraDest,2,3,6,90,false));
+    const uint32_t clockwise[6]={3,6,2,5,1,4};
+    for(int i=0;i<6;i++)CHECK(cameraDest[i]==clockwise[i]);
+    CHECK(CameraPixels::copy(cameraSource,3,2,6,cameraDest,2,3,6,270,false));
+    const uint32_t counterclockwise[6]={4,1,5,2,6,3};
+    for(int i=0;i<6;i++)CHECK(cameraDest[i]==counterclockwise[i]);
+    CHECK(CameraPixels::copy(cameraSource,3,2,6,cameraDest,2,3,6,90,true));
+    const uint32_t flipThenRotate[6]={6,3,5,2,4,1};
+    for(int i=0;i<6;i++)CHECK(cameraDest[i]==flipThenRotate[i]);
+    CHECK(CameraPixels::copy(cameraSource,3,2,6,cameraDest,3,2,6,180,false));
+    for(int i=0;i<6;i++)CHECK(cameraDest[i]==uint32_t(6-i));
+    uint32_t wide[8]={1,2,3,4,5,6,7,8},square[4]={};
+    CHECK(CameraPixels::copy(wide,4,2,8,square,2,2,4,0,false));
+    CHECK(square[0]==2&&square[1]==3&&square[2]==6&&square[3]==7);
+    CHECK(!CameraPixels::copy(wide,4,2,7,square,2,2,4,0,false));
+    CHECK(!CameraPixels::copy(wide,4,2,8,square,2,2,3,0,false));
+    CHECK(!CameraPixels::copy(wide,4,2,8,square,2,2,4,45,false));
+    CHECK(!CameraPixels::copy(wide,4,2,8,wide,4,2,8,0,false));
+    CHECK(!CameraPixels::copy(nullptr,4,2,8,square,2,2,4,0,false));
+    CHECK(!CameraPixels::copy(wide,0,2,0,square,2,2,4,0,false));
+    CHECK(CameraPixels::shape(1920,1080,1920*1080));
+    CHECK(!CameraPixels::shape(16,16,256)); // Unity's pre-initialization placeholder
+    CHECK(!CameraPixels::shape(1280,960,640*480));
+    CHECK(!CameraPixels::shape(8192,8192,8192*8192));
+    CHECK(CameraPixels::mirrorHorizontal(cameraSource,cameraDest,3,2,6));
+    CHECK(cameraDest[0]==cameraSource[2]&&cameraDest[1]==cameraSource[1]&&cameraDest[2]==cameraSource[0]);
+    CHECK(cameraDest[3]==cameraSource[5]&&cameraDest[4]==cameraSource[4]&&cameraDest[5]==cameraSource[3]);
+    CHECK(!CameraPixels::mirrorHorizontal(cameraSource,cameraDest,3,2,5));
+    CHECK(!CameraPixels::mirrorHorizontal(cameraSource,nullptr,3,2,6));
+    CHECK(!CameraPixels::mirrorHorizontal(cameraDest,cameraDest,3,2,6));
+    CHECK(!CameraPixels::mirrorHorizontal(cameraSource,cameraDest,0,2,0));
+    // Result/JPEG photographs take a separate buffer path from profile photos.
+    // Their front-facing pixels must match the mirrored profile preview exactly.
+    uint32_t memorial[]={1,2,3,4,5,6};
+    CHECK(CameraPixels::mirrorHorizontalInPlace(memorial,3,2,6));
+    CHECK(memorial[0]==3&&memorial[1]==2&&memorial[2]==1);
+    CHECK(memorial[3]==6&&memorial[4]==5&&memorial[5]==4);
+    CHECK(CameraPixels::mirrorHorizontal(cameraSource,cameraDest,3,2,6));
+    for(int i=0;i<6;i++)CHECK(memorial[i]==cameraDest[i]);
+    // The next real frame overwrites the previous shot before mirroring.
+    for(int i=0;i<6;i++)memorial[i]=cameraSource[i];
+    CHECK(CameraPixels::mirrorHorizontalInPlace(memorial,3,2,6));
+    for(int i=0;i<6;i++)CHECK(memorial[i]==cameraDest[i]);
+    uint32_t evenPhoto[]={0x10203040u,0xaabbccddu,0xdeadbeefu,0x01234567u};
+    CHECK(CameraPixels::mirrorHorizontalInPlace(evenPhoto,2,2,4));
+    CHECK(evenPhoto[0]==0xaabbccddu&&evenPhoto[1]==0x10203040u);
+    CHECK(evenPhoto[2]==0x01234567u&&evenPhoto[3]==0xdeadbeefu);
+    CHECK(!CameraPixels::mirrorHorizontalInPlace(evenPhoto,2,2,3));
+    CHECK(evenPhoto[0]==0xaabbccddu&&evenPhoto[3]==0xdeadbeefu);
+    CHECK(!CameraPixels::mirrorHorizontalInPlace(nullptr,2,2,4));
+    CHECK(!CameraPixels::mirrorHorizontalInPlace(evenPhoto,0,2,4));
+    CHECK(!CameraPixels::mirrorHorizontalInPlace(evenPhoto,9000,1,9000));
+    uint32_t singleColumn[]={7,8,9};
+    CHECK(CameraPixels::mirrorHorizontalInPlace(singleColumn,1,3,3));
+    CHECK(singleColumn[0]==7&&singleColumn[1]==8&&singleColumn[2]==9);
+    // Single-player selection is centered, not the cabinet's P1 quarter.
+    CHECK(CameraPixels::crop(wide,4,2,8,square,2,2,4,0,0));
+    CHECK(square[0]==2&&square[1]==3&&square[2]==6&&square[3]==7);
+    CHECK(CameraPixels::crop(wide,4,2,8,square,2,2,4,-100,100));
+    CHECK(square[0]==1&&square[1]==2&&square[2]==5&&square[3]==6);
+    CHECK(CameraPixels::crop(wide,4,2,8,square,2,2,4,100,-100));
+    CHECK(square[0]==3&&square[1]==4&&square[2]==7&&square[3]==8);
+    CHECK(!CameraPixels::crop(wide,4,2,7,square,2,2,4,0,0));
+    CHECK(!CameraPixels::crop(wide,4,2,8,square,2,2,3,0,0));
+    CHECK(!CameraPixels::crop(wide,4,2,8,square,2,3,6,0,0));
+    CHECK(!CameraPixels::crop(wide,4,2,8,wide,2,2,4,0,0));
+    // A front-camera photo must retain the preview orientation, including an
+    // off-center adjustment; rear-camera photos retain the original direction.
+    uint32_t frontPixels[8]={};
+    CHECK(CameraPixels::mirrorHorizontal(wide,frontPixels,4,2,8));
+    CHECK(CameraPixels::crop(frontPixels,4,2,8,square,2,2,4,0,0));
+    CHECK(square[0]==3&&square[1]==2&&square[2]==7&&square[3]==6);
+    CHECK(CameraPixels::crop(frontPixels,4,2,8,square,2,2,4,1,0));
+    CHECK(square[0]==2&&square[1]==1&&square[2]==6&&square[3]==5);
+    CHECK(CameraPixels::crop(wide,4,2,8,square,2,2,4,1,0));
+    CHECK(square[0]==3&&square[1]==4&&square[2]==7&&square[3]==8);
+    // Final profile-save routines used 3/4 width for P1 and 1/4 for P2.
+    // The selection must remain centered (x=384), not x=704 or x=64.
+    int cropLeft=-1,cropBottom=-1;
+    CHECK(CameraPixels::viewCrop(1280,960,512,512,800,600,0,0,cropLeft,cropBottom));
+    CHECK(cropLeft==384&&cropBottom==224);
+    CHECK(cropLeft!=1280*3/4-256&&cropLeft!=1280/4-256);
+    CHECK(CameraPixels::viewCrop(1280,960,512,512,800,600,10,-20,cropLeft,cropBottom));
+    CHECK(cropLeft==368&&cropBottom==256);
+    // The same drag at a different UI scale must select identical source pixels.
+    CHECK(CameraPixels::viewCrop(1280,960,512,512,400,300,5,-10,cropLeft,cropBottom));
+    CHECK(cropLeft==368&&cropBottom==256);
+    CHECK(CameraPixels::viewCrop(1280,960,512,512,800,600,-800,600,cropLeft,cropBottom));
+    CHECK(cropLeft==768&&cropBottom==0);
+    CHECK(CameraPixels::viewCrop(1280,960,512,512,800,600,800,-600,cropLeft,cropBottom));
+    CHECK(cropLeft==0&&cropBottom==448);
+    CHECK(!CameraPixels::viewCrop(1280,960,512,512,0,600,0,0,cropLeft,cropBottom));
+    CHECK(!CameraPixels::viewCrop(1280,960,1281,512,800,600,0,0,cropLeft,cropBottom));
+    CHECK(!CameraPixels::viewCrop(1280,960,512,512,800,600,801,0,cropLeft,cropBottom));
+    CHECK(!CameraPixels::viewCrop(1280,960,512,512,800,600,__builtin_nanf(""),0,cropLeft,cropBottom));
+    CHECK(!CameraPixels::viewCrop(1280,960,512,512,800,600,0,__builtin_inff(),cropLeft,cropBottom));
+    // Select actual asymmetric pixels via the same rectangle used by GetPixels.
+    CHECK(CameraPixels::viewCrop(4,2,2,2,4,2,0,0,cropLeft,cropBottom));
+    CHECK(CameraPixels::crop(frontPixels,4,2,8,square,2,2,4,cropLeft-1,cropBottom));
+    CHECK(square[0]==3&&square[1]==2&&square[2]==7&&square[3]==6);
+    CHECK(CameraPixels::viewCrop(4,2,2,2,4,2,-1,0,cropLeft,cropBottom));
+    CHECK(CameraPixels::crop(frontPixels,4,2,8,square,2,2,4,cropLeft-1,cropBottom));
+    CHECK(square[0]==2&&square[1]==1&&square[2]==6&&square[3]==5);
+    // Padded Y plane and interleaved chroma; bottom-up output, opaque alpha.
+    uint8_t yPlane[]={16,235,99,81,145,99},uPlane[]={128,99},vPlane[]={128,99};
+    uint32_t rgb[4]={};
+    CameraYuv::Plane yy{yPlane,6,3,1},uu{uPlane,1,2,2},vv{vPlane,1,2,2};
+    CHECK(CameraYuv::convert(yy,uu,vv,2,2,rgb,4));
+    CHECK(rgb[2]==0xff000000u&&rgb[3]==0xffffffffu);
+    CHECK(rgb[0]==0xff4c4c4cu&&rgb[1]==0xff969696u);
+    uPlane[0]=90;vPlane[0]=240;
+    CHECK(CameraYuv::convert(yy,uu,vv,2,2,rgb,4));
+    CHECK((rgb[0]&0xff)>250&&((rgb[0]>>8)&0xff)<4&&((rgb[0]>>16)&0xff)<4);
+    CHECK(!CameraYuv::convert(yy,uu,vv,2,2,rgb,3));
+    CameraYuv::Plane truncated{yPlane,4,3,1};
+    CHECK(!CameraYuv::convert(truncated,uu,vv,2,2,rgb,4));
+    CameraYuv::Plane invalidPlane{yPlane,6,1,1};
+    CHECK(!CameraYuv::convert(invalidPlane,uu,vv,2,2,rgb,4));
+    CameraYuv::Plane noData{nullptr,6,3,1};
+    CHECK(!CameraYuv::convert(noData,uu,vv,2,2,rgb,4));
+    CHECK(!CameraYuv::convert(yy,uu,vv,2,2,nullptr,4));
     CHECK(targetByBuildId(nullptr,20)==nullptr);
     const TargetBuild* profiles[]={&Target160::PROFILE,&Target165::PROFILE};
     for(const auto* profile:profiles){

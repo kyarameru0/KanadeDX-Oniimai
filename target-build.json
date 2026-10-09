@@ -99,5 +99,24 @@
   "aime_error_source": "Issues 1..5 use a request-start scan generation token, current open scan and short-lived primitive queue. Unity Update sets existing verified AimeErrorInfo.Category=Warning(1), HasError=true and IsBusy=false while HasResult remains false. Original Manager Polling->Result reports Result.Error; TryAime/ErrorAime opens EntryErrorAimeUnknown(13). Fatal category is never fabricated. Only the next actual AimeUnitStart clears an adapter-owned warning. Successful cards require the same generation token; existing game/server results win races. AdvCheck preserves the original return unless the same adapter-owned warning reached manager Done(9)/Result.Error(4); this releases TryAime.WaitAdvCheck without creating a read result. AnyRead additionally exposes the same completed error as a read event only while original read/enable flags are set, allowing the original AdvertiseProcess.IsGotoEntry path and login-disable guard to enter the card screen.",
   "aime_led_source": "Capture AimeReaderManager.Execute status commands at the caller; Android AimeUnit LED setters are adjacent 4-byte RET stubs and are not patched. Palette from DebugUI.DebugLED: scan white, success blue, network warning FFEB04, error red; results expire after 3 seconds.",
   "ceiling_patch": "Exact 4-byte RET at IO.Jvs.SetPwmOutput is replaced by one aligned atomic AArch64 B to a range-checked mmap-hint trampoline. No MAP_FIXED; thunk is RW then RX, original code-page protections restored, adjacent functions unmodified. Failure disables ceiling capture only. Snapshot: status/events/seen + buttons0..7 + Body8/Circle9/Side10 + BillboardRGB11.",
-  "profile_header": "app/src/main/cpp/target_160.h"
+  "profile_header": "app/src/main/cpp/target_160.h",
+  "camera_functions": {
+    "devices": "0x5027c70",
+    "unlock": "0x21c7abc",
+    "config": "0x21cf004",
+    "copy": "0x261ff04",
+    "take": "0x26ab0e8",
+    "get": "0x25d1d74",
+    "play": "0x5027ef8",
+    "icon_disabled": "0x266d4c8",
+    "photo_disabled": "0x266d504",
+    "stop": "0x5027f70",
+    "preview": "0x22175a0",
+    "photo_frame": "0x2218874",
+    "view": "0x2217b00",
+    "capture": "0x2343754",
+    "develop": "0x22203c0",
+    "region_pixels": "0x503d164"
+  },
+  "camera_policy": "Experimental opt-in selected-facing camera adapter; front is the default, rear is explicit and changes apply on game restart. Android CAMERA permission and SkipPhotoCamera OFF required. Run real preflight, retain failures, then unlock local icon/memorial photo gates. No photo consent, user selection or server result is fabricated. CPU YUV conversion bypasses missing video shaders; normalized 1280x960 buffer and centered single-player crop. Live front-camera video, centered guide and square preview confirmed on 1.65. Mirroring is saved separately per lens (front ON, rear OFF by default) and latched on game startup; previews, profile-photo output and memorial photos use the same choice. The separate profile-save processes use the selected central region instead of P1/P2 quarter-width crops. Final saved-icon and rear-camera device validation pending."
 }
